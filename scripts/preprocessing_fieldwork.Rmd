@@ -1,0 +1,241 @@
+---
+title: "Preprocessing Data: Field Experiment"
+author: "Bodo Winter"
+date: "7/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is the preprocessing script that cleans the data from the field experiment.
+
+## Load in data
+
+Load packages:
+
+```{r, message = FALSE}
+library(tidyverse)
+```
+
+Get the data:
+
+```{r, message = FALSE}
+# Load:
+
+field <- read_delim('../data/fieldwork/fieldwork-responses-main.csv', delim = ';')
+demographics <- read_delim('../data/fieldwork/fieldwork-personal-data.csv', delim = ';')
+
+# Check:
+
+field
+demographics
+
+# Check column names:
+
+colnames(field)
+```
+
+Fix last column name:
+
+```{r}
+colnames(field)[ncol(field)] <- 'PA08'
+```
+
+Get rid of the 'dataset' columns:
+
+```{r}
+field <- select(field,
+                -(`dataset-1`:`dataset-4`))
+```
+
+The field response file is wide format. Let's transform this to long format:
+
+```{r}
+field <- gather(field, 'ID', 'Choice', -file, -meaning)
+```
+
+Get the language info out of the ID column:
+
+```{r}
+field <- mutate(field,
+                Language = str_extract(ID, '[A-Z]+'))
+```
+
+Rename the relevant columns:
+
+```{r}
+field <- rename(field,
+                UniqueItem = file,
+                Meaning = meaning)
+```
+
+Add age and gender info:
+
+```{r}
+# Rename so that key columns match names:
+
+demographics <- rename(demographics,
+                       ID = subject,
+                       Age = age,
+                       Sex = gender)
+
+# Get only that what is needed:
+
+demographics <- select(demographics,
+                       ID, Age, Sex)
+
+# Join:
+
+field <- left_join(field, demographics)
+
+```
+
+Get rid of those that have Choice = NA:
+
+```{r}
+field <- filter(field, !is.na(Choice))
+```
+
+
+Exclude participants under 18:
+
+```{r}
+field <- filter(field, Age > 18)
+```
+
+Get the team info into a separate column:
+
+```{r}
+field <- mutate(field,
+                Team = str_extract(UniqueItem, '[A-Z]+'))
+```
+
+
+Reorder columns to have participant information, then item info, then response:
+
+```{r}
+field <- select(field,
+                ID, Language, Age, Sex, Meaning, Team, UniqueItem, Choice)
+```
+
+## Clean up the choice column:
+
+Clean up the choice column, first, replacements:
+
+```{r}
+field[field$Choice == 'an', ]$Choice <- 'man' # most likely, leads to inaccurate response (biased against our hypothesis)
+field[field$Choice == 'chid', ]$Choice <- 'child'
+field[field$Choice == 'child,,', ]$Choice <- 'child'
+field[field$Choice == 'hild', ]$Choice <- 'child'
+field[field$Choice == 'der', ]$Choice <- 'deer'
+field[field$Choice == 'dear', ]$Choice <- 'deer'
+field[field$Choice == 'deer,,', ]$Choice <- 'deer'
+field[field$Choice == 'deer, tiger, man', ]$Choice <- 'deer' # leads to inaccurate response (biased against our hypothesis)
+field[field$Choice == 'fie', ]$Choice <- 'fire'
+field[field$Choice == 'fire, meat', ]$Choice <- 'fire' # leads to inaccurate response (biased against our hypothesis)
+field[field$Choice == 'frit', ]$Choice <- 'fruit'
+field[field$Choice == 'fruit,', ]$Choice <- 'fruit'
+field[field$Choice == 'fruit, rock', ]$Choice <- 'fruit' # leads to inaccurate response (biased against our hypothesis)
+field[field$Choice == 'met', ]$Choice <- 'meat'
+field[field$Choice == 'reh', ]$Choice <- 'deer'
+field[field$Choice == 'man,,', ]$Choice <- 'man'
+field[field$Choice == 'mand', ]$Choice <- 'man'
+field[field$Choice == 'mn', ]$Choice <- 'man'
+field[field$Choice == 'knife,,', ]$Choice <- 'knife'
+field[field$Choice == 'knfe', ]$Choice <- 'knife'
+field[field$Choice == 'kife', ]$Choice <- 'knife'
+field[field$Choice == 'knif', ]$Choice <- 'knife'
+field[field$Choice == 'rock,,', ]$Choice <- 'rock'
+field[field$Choice == 'tiger,', ]$Choice <- 'tiger'
+field[field$Choice == 'tiger (man)', ]$Choice <- 'tiger'# leads to inaccurate response (biased against our hypothesis)
+field[field$Choice == 'tigr', ]$Choice <- 'tiger'
+field[field$Choice == 'tiger,,', ]$Choice <- 'tiger'
+field[field$Choice == 'snake,,', ]$Choice <- 'snake'
+field[field$Choice == 'wat', ]$Choice <- 'water'
+field[field$Choice == 'water,', ]$Choice <- 'water'
+field[field$Choice == 'water,,', ]$Choice <- 'water'
+field[field$Choice == 'wman', ]$Choice <- 'woman'
+field[field$Choice == 'woan', ]$Choice <- 'woman'
+field[field$Choice == 'soman', ]$Choice <- 'woman'
+field[field$Choice == 'woman,,', ]$Choice <- 'woman'
+```
+
+Second, exclusions:
+
+```{r}
+field <- filter(field, !(Choice %in% c(',,', '0')))
+```
+
+Compute accuracy:
+
+```{r}
+field <- mutate(field,
+                ACC = ifelse(Choice == Meaning, 1, 0))
+```
+
+Discard Polish (only one data point):
+
+```{r}
+field <- filter(field, Language != 'PL')
+```
+
+## Add language names:
+
+Add language name information to the data frame:
+
+```{r}
+field$Name <- 'English'
+field[field$Language == 'DE', ]$Name <- 'German'
+field[field$Language == 'SR', ]$Name <- 'Portuguese'
+field[field$Language == 'VA', ]$Name <- 'Daakie'
+field[field$Language == 'BR', ]$Name <- 'Tashlhiyt Berber'
+field[field$Language == 'PA', ]$Name <- 'Palikur'
+```
+
+Create a "Name2" variable that differentiates between British and American English:
+
+```{r}
+field$Name2 <- field$Name
+field[field$Language == 'US', ]$Name2 <- 'American English'
+field[field$Language == 'BE', ]$Name2 <- 'British English'
+```
+
+## Merge meaning categories into there:
+
+Load meaning categories:
+
+```{r, message = FALSE}
+sem <- read_csv('../data/meaning_categories.csv')
+```
+
+Merge this with the accuracy data:
+
+```{r}
+field <- left_join(field, sem, by = c('Meaning' = 'meaning'))
+```
+
+Create an "Animacy" variable from the "subcategory" column (this lumps "People" and "Animals" together):
+
+```{r}
+field <- mutate(field,
+                Animacy = ifelse(subcategory == 'inanimate', 'inanimate', 'animate'))
+```
+
+## Save output:
+
+Write the file:
+
+```{r, warning = FALSE}
+write_csv(field, '../data/field_cleaned.csv')
+```
+
+
+
+
+
+
+
+
+

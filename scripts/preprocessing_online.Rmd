@@ -1,0 +1,1202 @@
+---
+title: "Preprocessing Data: Online Experiment"
+author: "Bodo Winter"
+date: "7/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is the preprocessing script that cleans the data from the online and the field work experiment.
+
+There are 30 meanings a 3 teams, which means 90 experimental stimuli. On top of that there's 2 data points for kiki and bouba, 2 for r and l, and 10 for clapping, which amounts to a total of 104 data points per participant.
+
+## Load in data
+
+Load packages:
+
+```{r, message = FALSE}
+library(tidyverse)
+```
+
+Get the translations:
+
+```{r}
+TL <- read_csv('../data/translations.csv')
+TL %>% print(n = 2, width = Inf)
+```
+
+Extract a language-by-clap matrix:
+
+```{r}
+claps <- filter(TL, EN == 'clapping') %>%
+  select(EN:ZU) %>%
+  gather(key = 'Language', value = 'Clap')
+```
+
+Load in online data:
+
+```{r, message = FALSE, warning = FALSE}
+# Get vector with list of all files:
+
+all_files <- list.files('../data/online/')
+
+# Create an empty object which will be grown with all the files:
+
+web <- c()
+for (i in seq_along(all_files)) {
+  this_file <- str_c('../data/online/', all_files[i])
+  this_file <- read_delim(this_file, delim = '\t')
+  web <- rbind(web, this_file)
+}
+```
+
+How much data do we have per experiment (= language)?
+
+```{r}
+table(web$experiment)
+```
+
+## Process language names and participant IDs
+
+In the translation file, languages are stored in the format "AL", "EN" etc. Let's process the "experiment" column so that it has only those strings:
+
+```{r}
+web <- mutate(web,
+              Language = str_extract(experiment, '[A-Z]{2,2}'))
+```
+
+Just in case some session IDs recur across the different experiments, let's create a unique identifier column by pasting languages and session IDs together:
+
+```{r}
+web <- mutate(web,
+              ID = str_c(Language, '_', session))
+```
+
+For US sample, we need to add the L1 info:
+
+```{r}
+web[web$Language == 'US', ]$l1 <- 'english'
+```
+
+## Excluding test trials:
+
+Exclude those that have 'l1' == 'q' which is Ola's code for her own test runs.
+
+```{r}
+web <- filter(web,
+              l1 != 'q')
+web <- filter(web,
+              firstlanguage != 'q')
+```
+
+## Excluding people who indicated to be below 18:
+
+It is quite unlikely that each one of these people are actually below 18, e.g., some indicated to be 1 or 2 years old. We have to be careful with the US sample though, which are all over 18 (lab-based study), so let's set them to NA:
+
+```{r}
+web[web$Language == 'US', ]$participantage <- NA
+```
+
+However, because we don't know the true age in such cases of misreporting, we will exclude them.
+
+```{r}
+web <- filter(web,
+              participantage >= 18 | is.na(participantage))
+```
+
+## Excluding data points based on playback
+
+First, let's exclude participants who didn't play back the clapping sound, which means we can't verify whether they have done the experiment accurately:
+
+```{r}
+excludes <- filter(web, audio == 'clapping.wav', playbacks == 0) %>%
+  pull(ID) %>%
+  unique()
+
+web <- filter(web, !(ID %in% excludes))
+```
+
+Next, get rid of those participants that didn't play back at least 80% of the sounds:
+
+```{r}
+filter(web, playbacks == 0) %>% count(ID, sort = TRUE) %>% print(n = Inf)
+```
+
+All of them played back at least 80% of the sounds.
+
+Get rid of the playback == 0 trials:
+
+```{r}
+web <- filter(web, playbacks != 0)
+```
+
+## Excluding participants who didn't respond correctly to the clap:
+
+Get a tibble with just the clap responses:
+
+```{r}
+clap_res <- filter(web, audio == 'clapping.wav')
+```
+
+Merge this with the language data:
+
+```{r}
+clap_res <- left_join(clap_res, claps,
+                      by = c('Language' = 'Language'))
+```
+
+Check the relevant columns for a random selection of rows:
+
+```{r}
+select(clap_res, inputvalue, Clap) %>% sample_n(20) %>% print(n = Inf)
+```
+
+We can use this to create an accuracy score:
+
+```{r}
+clap_res <- mutate(clap_res,
+                   ACC = ifelse(inputvalue == Clap, 1, 0))
+```
+
+Check overall accuracy:
+
+```{r}
+# Raw counts:
+
+table(clap_res$ACC)
+
+# Proportions:
+
+round(prop.table(table(clap_res$ACC)), 2)
+```
+
+Check overall accuracy by language:
+
+```{r}
+# Raw counts:
+
+table(clap_res$Language, clap_res$ACC)
+
+# Proportions:
+
+round(prop.table(table(clap_res$Language, clap_res$ACC), 1), 2)
+```
+
+Georgian extremely high — coding error? Also, some of the other ones that are relatively high (especially Chinese) seem to be languages with alternative scripts. I suspect some character matching errors here.
+
+What happens with Georgian?
+
+```{r}
+set.seed(1)
+filter(clap_res, Language == 'GE') %>%
+  sample_n(20) %>%
+  select(inputvalue, Clap, ACC) %>%
+  print(n = Inf)
+```
+
+It seems that there are two ways the claps are coded as "inputvalue", either "ტაშის დაკვრა, შემოკვრა" or just "ტაშის დაკვრა". Make them consistent:
+
+```{r}
+clap_res <- mutate(clap_res,
+                   Clap = ifelse(Clap == 'ტაშის დაკვრა, შემოკვრა', 'ტაშის დაკვრა', Clap),
+                   inputvalue = ifelse(inputvalue == 'ტაშის დაკვრა, შემოკვრა', 'ტაშის დაკვრა', inputvalue))
+```
+
+Re-compute accuracy and check accuracy for Georgian:
+
+```{r}
+# Recompute:
+
+clap_res <- mutate(clap_res,
+                   ACC = ifelse(inputvalue == Clap, 1, 0))
+
+# Check:
+
+filter(clap_res, Language == 'GE') %>% count(ACC)
+```
+
+Looks much better.
+
+What happens with Finnish?
+
+```{r}
+set.seed(1)
+filter(clap_res, Language == 'FI') %>%
+  sample_n(20) %>%
+  select(inputvalue, Clap, ACC) %>%
+  print(n = Inf)
+```
+
+There's two different responses "taputus" and "taputtaa". Let's make them consistent:
+
+```{r}
+clap_res <- mutate(clap_res,
+                   inputvalue = ifelse(inputvalue == 'taputus', 'taputtaa', inputvalue))
+```
+
+Re-compute accuracy and check accuracy for Finnish:
+
+```{r}
+# Recompute:
+
+clap_res <- mutate(clap_res,
+                   ACC = ifelse(inputvalue == Clap, 1, 0))
+
+# Check:
+
+filter(clap_res, Language == 'FI') %>% count(ACC)
+```
+
+Looks much better.
+
+What happens with TA?
+
+```{r}
+filter(clap_res, Language == 'TA') %>% count(ID)
+```
+
+There's only four subjects! We can savely exclude all TAs. Let's start a vector with all the ones to exclude:
+
+```{r}
+excludes <- filter(clap_res, Language == 'TA') %>% pull(ID)
+```
+
+What happens with MG?
+
+```{r}
+filter(clap_res, Language == 'MG') %>% count(ID)
+```
+
+There's only three participants for MG. We can exclude these as well. Let's append them to the "excludes" vector:
+
+```{r}
+xtemp <- filter(clap_res, Language == 'MG') %>% pull(ID)
+excludes <- c(excludes, xtemp)
+```
+
+For Albanian we have more speakers, but what explains the low percentage of people responding correctly for the clapping sound?
+
+```{r}
+filter(clap_res, Language == 'AL', ACC == 0) %>%
+  select(inputvalue, Clap) %>%
+  print(n = Inf)
+```
+
+It's a mix of different responses. This seems genuine higher levels of incorrectness.
+
+For Chinese we also have more speakers, but what explains the low percentage of people responding clap?
+
+```{r}
+filter(clap_res, Language == 'CN', ACC == 0) %>%
+  select(inputvalue, Clap) %>%
+  print(n = Inf)
+```
+
+Here too this seems genuine. A lot of people responded "重重地击打" (English 'pound') for the clapping sound.
+
+Finally, what about Thai?
+
+```{r}
+filter(clap_res, Language == 'TH', ACC == 0) %>%
+  select(inputvalue, Clap) %>%
+  print(n = Inf)
+```
+
+Now that we have checked and cleaned the clapping data, we can append those that responded incorrect to the clapping sound to the main "excludes" vector:
+
+```{r}
+xtemp <- filter(clap_res, ACC == 0) %>% pull(ID)
+excludes <- c(excludes, xtemp)
+```
+
+Get only the unique ones of that and check how many there are, also compared to the total number of speakers:
+
+```{r}
+excludes <- unique(excludes)
+
+# Check:
+
+length(excludes)
+
+# Check total N of speakers:
+
+length(unique(web$ID))
+
+# Check what proportion of speakers is excluded this way:
+
+length(excludes) / length(unique(web$ID))
+```
+
+Let's get rid of the those speakers in the main tibble:
+
+```{r}
+# Save N before to compute percentage:
+
+N_raw <- nrow(web)
+
+# Exclude:
+
+web <- filter(web, !(ID %in% excludes))
+
+# Check new N:
+
+noClap_N <- nrow(web)
+noClap_N
+
+# Compute proportion of loss in terms of raw data points:
+
+round(1 - noClap_N / N_raw, 2)
+```
+
+Get rid of the clap trials from the file:
+
+```{r}
+web <- filter(web, audio != 'clapping.wav')
+```
+
+## Process L1 information:
+Get rid of trailing spaces:
+
+```{r}
+web <- mutate(web,
+              l1 = str_trim(l1),
+              l2 = str_trim(l2))
+```
+
+That one Chinese person who wrote "hi" in the language field probably knows English given that they used this word... this is the more conservative choice (working against our hypothesis):
+
+```{r}
+web[web$l1 == 'hi', ]$l1 <- 'chinese'
+web[which(web$l2 == 'hi'), ]$l2 <- 'english'
+```
+
+Perform replacements — for this, we take whatever is the person's first-listed language as their primary L1 (this only applies to a few cases anyway). In a few cases where there is overlap with another language of which we have multile speakers in the sample, the assignment will be done this way, e.g., "ukrainian, russian" -> "russian"
+
+```{r}
+web <- mutate(web,
+              l1_backup = l1,
+              l1 = str_replace(l1, 'isizulu', 'zulu'),
+              l1 = str_replace(l1, 'turkce', 'turkish'),
+              l1 = str_replace(l1, 'swedish, korean', 'swedish'),
+              l1 = str_replace(l1, 'french, spanish', 'french'),
+              l1 = str_replace(l1, 'ukrainian, russian', 'russian'),
+              l1 = str_replace(l1, 'portuguese, french, danish', 'portuguese'),
+              l1 = str_replace(l1, 'finnish, estonian', 'finnish'),
+              l1 = str_replace(l1, 'albanianja', 'albanian'),
+              l1 = str_replace(l1, 'armenian, russian', 'armenian'),
+              l1 = str_replace(l1, 'swissgerman', 'german'),
+              l1 = str_replace(l1, 'austriangerman', 'german'),
+              l1 = str_replace(l1, 'german, turkish', 'german'),
+              l1 = str_replace(l1, 'german, english', 'german'),
+              l1 = str_replace(l1, 'konkani, english', 'english'),
+              l1 = str_replace(l1, 'español', 'spanish'),
+              l1 = str_replace(l1, 'spanish, german', 'spanish'),
+              l1 = str_replace(l1, 'italian, german', 'italian'),
+              l1 = str_replace(l1, 'italian, german', 'italian'),
+              l1 = str_replace(l1, 'italia', 'italian'),                  
+              l1 = str_replace(l1, 'italiann', 'italian'),
+              l1 = str_replace(l1, 'polish, silesian', 'polish'),
+              l1 = str_replace(l1, 'swedish, finnish', 'swedish'),
+              l1 = str_replace(l1, 'greek, german', 'greek'),
+              l1 = str_replace(l1, 'russian, belarusian', 'russian'),
+              l1 = str_replace(l1, 'georgian, mingrelian', 'georgian'),
+              l1 = str_replace(l1, 'hi', 'chinese'),
+              l1 = str_replace(l1, 'cchinesenese', 'chinese'),
+              l1 = str_replace(l1, 'turkce', 'turkish'),
+              l1 = str_replace(l1, 'ukrainian, russian', 'russian'),
+              l1 = str_replace(l1, 'russian, belarusian', 'russian'),
+              l1 = str_replace(l1, 'romanian ', 'romanian'),
+              l1 = str_replace(l1, 'türkiye', 'turkish'),
+              l1 = str_replace(l1, 'zhuang', 'chinese'),
+              l1 = str_replace(l1, 'swissgerman', 'german'),
+              l1 = str_replace(l1, 'austriangerman', 'german'),
+              l1 = str_replace(l1, 'finnish, estonian', 'finnish'),
+              l1 = str_replace(l1, 'chinesendi', 'chinese'),
+              l1 = str_replace(l1, 'estonian, russian', 'estonian'),
+              l1 = str_replace(l1, 'irish, english', 'english'),
+              l1 = str_replace(l1, 'spanish, spanish', 'spanish'),
+              l1 = str_replace(l1, 'catalan', 'spanish'),
+              l1 = str_replace(l1, 'macedonian', 'russian'), # russian experiment
+              l1 = str_replace(l1, 'kurdish', 'turkish'), # turkish experiment
+              l1 = str_replace(l1, 'latviann', 'estonian'), # estonian experiment
+              l1 = str_replace(l1, 'venda', 'zulu'), # zulu experiment
+              l1 = str_replace(l1, 'ss', 'spanish'), # spanish experiment
+              l1 = str_replace(l1, 'dd', 'spanish'), # spanish experiment
+              l1 = str_replace(l1, 'esperanto', 'spanish'), # spanish experiment
+              l1 = str_replace(l1, 'catalan, spanish', 'spanish'))
+```
+
+Exclusios based on language:
+
+```{r}
+web <- filter(web,
+              !l1 %in% c('test', 'k'))
+web <- filter(web, # incomplete trials:
+              !ID %in% c('ES_2038793', 'FA_2151666', 'JP_2006947',
+                         'EN_2086607', 'ES_2039204', 'EN_2029660',
+                         'EN_2047869', 'EN_2002174')) 
+```
+
+## Process L2 information:
+
+Conversions:
+
+```{r}
+web <- mutate(web,
+              l2 = str_replace(l2, 'potuguese', 'portuguese'),
+              l2 = str_replace(l2, 'spanich', 'spanish'),
+              l2 = str_replace(l2, 'calatan', 'catalan'),
+              l2 = str_replace(l2, 'ancient greek', 'greek'),
+              l2 = str_replace(l2, 'rumanian', 'romanian'),
+              l2 = str_replace(l2, 'estniska', 'estonian'),
+              l2 = str_replace(l2, 'calabrese', 'italian'),
+              l2 = str_replace(l2, 'dari', 'farsi'))
+```
+
+Transform NAs into "this person knows no L2":
+
+```{r}
+web <- mutate(web,
+              l2 = ifelse(is.na(l2), 'no L2', l2))
+```
+
+Extract whether the person reports any English:
+
+```{r}
+web <- mutate(web,
+              EnglishL2YesNo = str_detect(l2, 'english'))
+```
+
+Create an L2 variable that has three levels: no L2, non-English L2, English L2 or English L1:
+
+```{r}
+web <- mutate(web,
+              L2_simplified = ifelse(is.na(l2), 'no L2', l2),
+              L2_simplified = ifelse(str_detect(L2_simplified, 'english'), 'english L2', L2_simplified))
+
+web[!web$L2_simplified %in% c('no L2', 'english L2'), ]$L2_simplified <- 'non-English L2'
+web[web$l1 == 'english', ]$L2_simplified <- 'English L1'
+```
+
+## Extracting r/l data for other experiment:
+
+Get two tibbles, one for each experiment:
+
+```{r}
+rough <- filter(web, audio %in% c('r.wav', 'l.wav'))
+```
+
+Check:
+
+```{r}
+table(rough$audio, rough$inputvalue)
+```
+
+Get rid of the responses that are neither "kiki" nor "bouba", and likewise for "r" and "l":
+
+```{r}
+rough <- filter(rough, !inputvalue %in% c('ogień', 'klein'))
+```
+
+Write this to files:
+
+```{r, warning = FALSE}
+write_csv(rough, '../data/rough_cleaned.csv')
+```
+
+Get rid of kiki/bouba and r/l in the dataset:
+
+```{r}
+web <- filter(web,
+              !(audio %in% c('bouba.wav', 'kiki.wav', 'r.wav', 'l.wav')))
+```
+
+## Create accuracy scores the main experiment:
+
+Next, we need to get the first element out of the options:
+
+```{r}
+firsts <- str_split(web$options, ',', simplify = TRUE)[, 1]
+firsts <- str_replace(firsts, '\\[\\"', '')
+firsts <- str_replace(firsts, '\\"', '')
+```
+
+Put this back into the tibble:
+
+```{r}
+web$CorrectOption <- firsts
+```
+
+Create accuracy score from this:
+
+```{r}
+web <- mutate(web,
+              ACC = ifelse(CorrectOption == inputvalue, 1, 0))
+```
+
+What's the average accuracy per language?
+
+```{r}
+# Table of accuracy by language:
+
+xtab <- with(web, table(Language, ACC))
+
+# Print table (raw counts):
+
+xtab
+
+# Row-wise proportions:
+
+round(prop.table(xtab, 1), 2)
+```
+
+We have almost no values for "TA", "MS" and "MG". These will be excluded.
+
+```{r}
+web <- filter(web,
+              !(Language %in% c('MG', 'MS', 'TA')))
+```
+
+
+## Fix Georgian data:
+
+This one looks suspicious: 'ცემა, ძგერა (გულის)' versus 'ცემა' ... this is actually two different variants of the form "to pound" in Georgian. Similar with the concept "fruit"... Let's make them the same and re-compute accuracy:
+
+```{r}
+georgian <- read_csv('../data/georgian_mappings.csv')
+georgian
+```
+
+Replace the relevant forms:
+
+```{r}
+for (i in 1:nrow(georgian)) {
+  web[web$inputvalue == georgian[i, ]$Match, ]$inputvalue <- georgian[i, ]$Replacement
+}
+```
+
+Create accuracy score from this:
+
+```{r}
+web <- mutate(web,
+              ACC = ifelse(CorrectOption == inputvalue, 1, 0))
+```
+
+What's the average accuracy per language?
+
+```{r}
+# Table of accuracy by language:
+
+xtab <- with(web, table(Language, ACC))
+
+# Print table (raw counts):
+
+xtab
+
+# Row-wise proportions:
+
+round(prop.table(xtab, 1), 2)
+```
+
+## Extract item and team info:
+
+Extract the item and team information:
+
+```{r}
+web <- separate(web, audio,
+                into = c('Team', 'Meaning'),
+                remove = FALSE) %>% 
+  rename(UniqueItem = audio)
+
+# Check:
+
+select(web, Team, Meaning, UniqueItem)
+```
+
+Looks like the splitting worked well.
+
+## Exclude participants:
+
+Exclude participants for which we don't have at least 80% of the data:
+
+```{r}
+# Table of all participants:
+
+all_participants <- table(web$ID)
+
+# Get those that haven't completed at least 72 trials:
+
+take_these <- names(all_participants[all_participants >= 72])
+
+# Reduce to only those:
+
+web <- filter(web, ID %in% take_these)
+```
+
+## For confusion matrices, append English meaning information:
+
+To be able to compute confusion matrices, we need to match the forms from the respective languages back to the English glosses of the meanings.
+
+```{r}
+# Create vector of languages:
+
+languages <- unique(web$Language)
+
+# Create empty meaning columns for Choice:
+
+web$Choice <- NA
+```
+
+Now we can loop through the languages and get the relevant meanings out of the "TL" translation data frame:
+
+```{r}
+for (i in seq_along(languages)) {
+  this_lang <- languages[i]
+  
+  # Extract language from main tibble:
+  
+  this_df <- web[web$Language == this_lang, ]
+  this_df$inputvalue
+  
+  # Extract relevant sections from translations "TL" tibble:
+  
+  this_TL <- as.vector(unlist(TL[, colnames(TL) == this_lang]))
+  
+  # Match this with the English meanings from the "TL" tibble:
+  
+  web[web$Language == this_lang, ]$Choice <- as.vector(unlist(TL[match(this_df$inputvalue, this_TL), 'EN']))
+}
+```
+
+Let's check whether there's any NAs and if so, what the meanings are:
+
+```{r}
+filter(web, is.na(Choice), !duplicated(inputvalue))$inputvalue
+```
+
+These meanings need to be corrected:
+
+```{r}
+# web[web$inputvalue == 'taputus', ]$Choice <- 'clapping'
+web[web$inputvalue == 'დაჭრა', ]$Choice <- 'cut'
+web[web$inputvalue == 'დამალვა', ]$Choice <- 'hide'
+web[web$inputvalue == 'კაცი', ]$Choice <- 'man'
+web[web$inputvalue == 'ხილი', ]$Choice <- 'fruit'
+web[web$inputvalue == 'მშრალი', ]$Choice <- 'dry'
+web[web$inputvalue == 'ცემა', ]$Choice <- 'pound'
+web[web$inputvalue == 'კარგი', ]$Choice <- 'good'
+web[web$inputvalue == 'ტაშის დაკვრა', ]$Choice <- 'clapping'
+web[web$inputvalue == '이것', ]$Choice <- 'this'
+web[web$inputvalue == '어린이', ]$Choice <- 'child'
+web[web$inputvalue == '저것', ]$Choice <- 'that'
+web[web$inputvalue == '둔하다', ]$Choice <- 'dull'
+web[web$inputvalue == '숨기다', ]$Choice <- 'hide'
+web[web$inputvalue == '과일', ]$Choice <- 'fruit'
+web[web$inputvalue == '바위', ]$Choice <- 'rock'
+web[web$inputvalue == 'chować', ]$Choice <- 'hide'
+web[web$inputvalue == 'zbierać', ]$Choice <- 'gather'
+web[web$inputvalue == 'a bate', ]$Choice <- 'pound'
+web[web$inputvalue == 'ตำ โขลก', ]$Choice <- 'pound'
+web[web$inputvalue == 'sinyamazane', ]$Choice <- 'deer'
+web[web$inputvalue == 'cijile', ]$Choice <- 'sharp'
+web[web$inputvalue == 'buthuntu', ]$Choice <- 'dull'
+```
+
+Russian doesn't let me do replacements like the above, probably some character encoding issue. So I did a trick:
+
+```{r}
+# Extract Russian words to match:
+
+these_rus <- sort(unique(web[is.na(web$Choice), ]$inputvalue))
+
+# These are the corresponding English meanings:
+
+these_meanings <- c('big', 'bad')
+
+# Match this:
+
+web[is.na(web$Choice), ]$Choice <- these_meanings[match(web[is.na(web$Choice), ]$inputvalue, these_rus)]
+```
+
+Phew.
+
+For all of these words we need to now check the accuracy again, as it's likely that they have been miscoded (given that the translations in the file did not seem to match). We don't need to do this for the "clapping" responses, as these are by definition incorrect at this stage in the analysis (since all clapping sounds have been excluded).
+
+```{r}
+sum(web[web$inputvalue == 'დაჭრა', ]$ACC)
+sum(web[web$inputvalue == 'დაჭრა', ]$Meaning == web[web$inputvalue == 'დაჭრა', ]$Choice)
+```
+
+Correct.
+
+```{r}
+sum(web[web$inputvalue == 'დამალვა', ]$ACC)
+sum(web[web$inputvalue == 'დამალვა', ]$Meaning == web[web$inputvalue =='დამალვა', ]$Choice)
+```
+
+Correct.
+
+```{r}
+sum(web[web$inputvalue == 'კაცი', ]$ACC)
+sum(web[web$inputvalue == 'კაცი', ]$Meaning == web[web$inputvalue == 'კაცი', ]$Choice)
+```
+
+Correct.
+
+```{r}
+sum(web[web$inputvalue == 'ხილი', ]$ACC)
+sum(web[web$inputvalue == 'ხილი', ]$Meaning == web[web$inputvalue == 'ხილი', ]$Choice)
+```
+
+Correct.
+
+```{r}
+sum(web[web$inputvalue == 'მშრალი', ]$ACC)
+sum(web[web$inputvalue == 'მშრალი', ]$Meaning == web[web$inputvalue == 'მშრალი', ]$Choice)
+```
+
+O.k., so this item has persistently been causing problems. Based on the translations, "dull", which was meant to be the opposite of sharp was translated into "boring, dry", which also leads to confusion with the other meaning "dry". This translation error should be excluded. Notice that if at all, this goes against our hypothesis since this item has high accuracy.
+
+```{r}
+web <- filter(web,
+              inputvalue != 'მშრალი')
+web <- filter(web,
+              CorrectOption != 'მშრალი')
+```
+
+This works because the "georgian_mapping.csv" mappings have already merged the corresponding inputs and correct options.
+
+```{r}
+sum(web[web$inputvalue == 'ცემა', ]$ACC)
+sum(web[web$inputvalue == 'ცემა', ]$Meaning == web[web$inputvalue == 'ცემა', ]$Choice)
+```
+
+Correct.
+
+```{r}
+sum(web[web$inputvalue == 'კარგი', ]$ACC)
+sum(web[web$inputvalue == 'კარგი', ]$Meaning == web[web$inputvalue == 'კარგი', ]$Choice)
+```
+
+Correct.
+
+```{r}
+sum(web[web$inputvalue == '이것', ]$ACC)
+sum(web[web$inputvalue == '이것', ]$Meaning == web[web$inputvalue == '이것', ]$Choice)
+```
+
+Here there's an issue. Let's fix this:
+
+```{r}
+web[web$inputvalue == '이것' & web$Meaning == 'this', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == '이것', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == '어린이', ]$ACC)
+sum(web[web$inputvalue == '어린이', ]$Meaning == web[web$inputvalue == '어린이', ]$Choice)
+```
+
+Again, an issue:
+
+```{r}
+web[web$inputvalue == '어린이' & web$Meaning == 'child', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == '어린이', ]$ACC)
+```
+
+Fixed.
+
+
+```{r}
+sum(web[web$inputvalue == '저것', ]$ACC)
+sum(web[web$inputvalue == '저것', ]$Meaning == web[web$inputvalue == '저것', ]$Choice)
+```
+
+One off. Fix this:
+
+```{r}
+web[web$inputvalue == '저것' & web$Meaning == 'that', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == '저것', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == '둔하다', ]$ACC)
+sum(web[web$inputvalue == '둔하다', ]$Meaning == web[web$inputvalue == '둔하다', ]$Choice)
+```
+
+Yep, there seems to be something off with Korean. Fix this too:
+
+```{r}
+web[web$inputvalue == '둔하다' & web$Meaning == 'dull', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == '둔하다', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == '숨기다', ]$ACC)
+sum(web[web$inputvalue == '숨기다', ]$Meaning == web[web$inputvalue == '숨기다', ]$Choice)
+
+# Fix:
+
+web[web$inputvalue == '숨기다' & web$Meaning == 'hide', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == '숨기다', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == '과일', ]$ACC)
+sum(web[web$inputvalue == '과일', ]$Meaning == web[web$inputvalue == '과일', ]$Choice)
+
+# Fix:
+
+web[web$inputvalue == '과일' & web$Meaning == 'fruit', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == '과일', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == '바위', ]$ACC)
+sum(web[web$inputvalue == '바위', ]$Meaning == web[web$inputvalue == '바위', ]$Choice)
+
+# Fix:
+
+web[web$inputvalue == '바위' & web$Meaning == 'rock', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == '바위', ]$ACC)
+```
+
+Check Korean values in general:
+
+```{r}
+# Correct:
+
+filter(web, Language == 'KR', ACC == 1) %>% select(inputvalue, CorrectOption, Meaning, Choice)
+
+# Incorrect:
+
+filter(web, Language == 'KR', ACC == 0) %>% select(inputvalue, CorrectOption, Meaning, Choice)
+
+# All accuracy values:
+
+table(filter(web, Language == 'KR')$ACC)
+```
+
+Seems all good.
+
+On to the next language with errors.
+
+```{r}
+sum(web[web$inputvalue == 'chować', ]$ACC)
+sum(web[web$inputvalue == 'chować', ]$Meaning == web[web$inputvalue == 'chować', ]$Choice)
+
+# Fix:
+
+web[web$inputvalue == 'chować' & web$Meaning == 'hide', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == 'chować', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == 'zbierać', ]$ACC)
+sum(web[web$inputvalue == 'zbierać', ]$Meaning == web[web$inputvalue == 'zbierać', ]$Choice)
+
+# Fix:
+
+web[web$inputvalue == 'zbierać' & web$Meaning == 'gather', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == 'zbierać', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == 'a bate', ]$ACC)
+sum(web[web$inputvalue == 'a bate', ]$Meaning == web[web$inputvalue == 'a bate', ]$Choice)
+```
+
+All fine. Next:
+
+```{r}
+sum(web[web$inputvalue == 'ตำ โขลก', ]$ACC)
+sum(web[web$inputvalue == 'ตำ โขลก', ]$Meaning == web[web$inputvalue == 'ตำ โขลก', ]$Choice)
+```
+
+All good.
+
+```{r}
+sum(web[web$inputvalue == 'sinyamazane', ]$ACC)
+sum(web[web$inputvalue == 'sinyamazane', ]$Meaning == web[web$inputvalue == 'sinyamazane', ]$Choice)
+
+# Fix:
+
+web[web$inputvalue == 'sinyamazane' & web$Meaning == 'deer', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == 'sinyamazane', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == 'cijile', ]$ACC)
+sum(web[web$inputvalue == 'cijile', ]$Meaning == web[web$inputvalue == 'cijile', ]$Choice)
+
+# Fix:
+
+web[web$inputvalue == 'cijile' & web$Meaning == 'sharp', ]$ACC <- 1
+
+# Check:
+
+sum(web[web$inputvalue == 'cijile', ]$ACC)
+```
+
+Next:
+
+```{r}
+sum(web[web$inputvalue == 'buthuntu', ]$ACC)
+sum(web[web$inputvalue == 'buthuntu', ]$Meaning == web[web$inputvalue == 'buthuntu', ]$Choice)
+```
+
+Fine. The last three were from Zulu. Check:
+
+```{r}
+# Correct:
+
+filter(web, Language == 'ZU', ACC == 1) %>% select(inputvalue, CorrectOption, Meaning, Choice)
+
+# Incorrect:
+
+filter(web, Language == 'ZU', ACC == 0) %>% select(inputvalue, CorrectOption, Meaning, Choice)
+
+# All accuracy values:
+
+table(filter(web, Language == 'ZU')$ACC)
+```
+
+Looks all good.
+
+## Excluding data points that are "q"
+
+Ola used "q" as her code for test-running the scripts. Let's exclude those data points.
+
+```{r}
+# Check how many there are:
+
+filter(web, foreignlanguages == 'q') %>% nrow
+
+# Exclude:
+
+web <- filter(web, foreignlanguages != 'q')
+```
+
+## Perform re-assignments based on first language info
+
+Some native speakers of English, for example, are resident in France and filled out the French version of the experiment, e.g.:
+
+```{r}
+table(web[web$l1 == 'english', ]$experiment)
+```
+
+We will take whatever they indicated as their first language to be their primary language:
+
+```{r}
+web[web$l1 == 'english' & web$experiment == 'Iconicity (FR)', ]$l2 <- 'french'
+web[web$l1 == 'english' & web$experiment == 'Iconicity (FR)', ]$Language <- 'EN'
+
+web[web$l1 == 'german' & web$experiment == 'Iconicity (EN)', ]$Language <- 'DE'
+
+web[web$l1 == 'german' & web$experiment == 'Iconicity (PT)', ]$Language <- 'DE'
+
+web[web$l1 == 'german' & web$experiment == 'Iconicity (ZU)', ]$l2 <- 'english, zulu'
+web[web$l1 == 'german' & web$experiment == 'Iconicity (ZU)', ]$Language <- 'DE'
+
+web[web$l1 == 'polish' & web$experiment == 'Iconicity (EN)', ]$Language <- 'PL'
+
+web[web$l1 == 'spanish' & web$experiment == 'Iconicity (PT)', ]$Language <- 'ES'
+
+web[web$l1 == 'spanish' & web$experiment == 'Iconicity (EN)', ]$Language <- 'ES'
+
+web[web$l1 == 'italian' & web$experiment == 'Iconicity (EE)', ]$Language <- 'IT'
+
+web[web$l1 == 'italian' & web$experiment == 'Iconicity (EN)', ]$Language <- 'IT'
+
+web[web$l1 == 'portuguese' & web$experiment == 'Iconicity (EN)', ]$Language <- 'PT'
+
+web[web$l1 == 'swedish' & web$experiment == 'Iconicity (EN)', ]$Language <- 'SE'
+
+web[web$l1 == 'zulu' & web$experiment == 'Iconicity (EN)', ]$Language <- 'ZU'
+
+web[web$l1 == 'chinese' & web$experiment == 'Iconicity (EN)', ]$Language <- 'CN'
+
+web[web$l1 == 'chinese' & web$experiment == 'Iconicity (DE)', ]$Language <- 'CN'
+
+web[web$l1 == 'chinese' & web$experiment == 'Iconicity (JP)', ]$Language <- 'CN'
+
+web[web$l1 == 'estonian' & web$experiment == 'Iconicity (EN)', ]$Language <- 'EE'
+
+web[web$l1 == 'korean' & web$experiment == 'Iconicity (JP)', ]$Language <- 'KR'
+
+web[web$l1 == 'thai' & web$experiment == 'Iconicity (EN)', ]$Language <- 'TH'
+
+web[web$l1 == 'portuguese' & web$experiment == 'Iconicity (EN)', ]$Language <- 'PT'
+```
+
+Only two Finnish speakers (in the Englisha and Swedish experiments), and also incomplete Malagasy and Tamil trials. Let's exclude these:
+
+```{r}
+web <- filter(web, !l1 %in% c('finnish', 'malagasy', 'tamil'))
+```
+
+
+
+## Simplify table in terms of columns
+
+So that it's easier to handle the data in the analysis script, let's get rid of unneeded columns:
+
+```{r}
+web <- select(web,
+              Language, ID,
+              l1, l2,
+              EnglishL2YesNo, L2_simplified, dialect,
+              sex, participantage,
+              Meaning, Team, UniqueItem,
+              playbacks,
+              Choice, ACC)
+```
+
+And rename:
+
+```{r}
+web <- rename(web,
+              Sex = sex,
+              Age = participantage,
+              Rep = playbacks,
+              L1 = l1,
+              L2 = l2,
+              Dialect = dialect)
+```
+
+## Check L1/L2 data:
+
+Create an English L2 yes/no variable:
+
+```{r}
+web <- mutate(web,
+              EnglishL2 = str_detect(L2, 'english'))
+```
+
+How many unique subjects speak English as L2?
+
+```{r}
+# Create table per subject:
+
+L2_counts <- web %>% filter(Language != 'EN') %>% count(ID, Language, EnglishL2)
+
+# Create table per language:
+
+L2_tab <- with(L2_counts, table(Language, EnglishL2))
+
+# Check:
+
+L2_tab
+```
+
+How many in total?
+
+```{r}
+colSums(L2_tab)
+colSums(L2_tab) / sum(L2_tab)
+```
+
+There are too few L2 speakers to even begin looking at the effect of L2 influence. The issue is that we would want to fit a model with random slopes for L2-by-language (at least), but most languages don't have people who *don't* speak English, so this can't be estimated.
+
+## Merge semantic category and family info into there:
+
+Get language info and merge it in there:
+
+```{r, message = FALSE}
+langs <- read_csv('../data/language_info.csv')
+web <- left_join(web, langs)
+```
+
+Create a variable for IE versus non-IE:
+
+```{r}
+# Create IE versus non-IE variable:
+
+web <- rename(web, Genus = Family)
+web <- mutate(web, Family = ifelse(Genus == 'IE', 'IE', 'other'))
+```
+
+Load meaning categories:
+
+```{r, message = FALSE}
+sem <- read_csv('../data/meaning_categories.csv')
+```
+
+Merge this with the accuracy data:
+
+```{r}
+web <- left_join(web, sem, by = c('Meaning' = 'meaning'))
+```
+
+Create an "Animacy" variable from the "subcategory" column (this lumps "People" and "Animals" together):
+
+```{r}
+web <- mutate(web,
+              Animacy = ifelse(subcategory == 'inanimate', 'inanimate', 'animate'))
+```
+
+## Save output:
+
+Write the file:
+
+```{r, warning = FALSE}
+write_csv(web, '../data/online_cleaned.csv')
+```
+
+
+
+
+
+
+
+
+
