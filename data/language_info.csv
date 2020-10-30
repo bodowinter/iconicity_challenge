@@ -1,0 +1,30 @@
+Language,Name,ISO639.3,Script,Family,Autotyp_Area,Continent,Longitude,Latitude
+EN,English,eng,roman,IE,Europe,W and SW Eurasia,0,52
+AL,Albanian,als,roman,IE,Europe,W and SW Eurasia,20,41
+AM,Armenian,amh,different,IE,Greater Mesopotamia,W and SW Eurasia,45,40
+CN,Chinese,cmn,different,Sino-Tibetan,Southeast Asia,S/SE Asia,110,35
+DE,German,deu,roman,IE,Europe,W and SW Eurasia,10,52
+DK,Danish,dan,roman,IE,Europe,W and SW Eurasia,10,56
+EE,Estonian,est,roman,Finno-Ugric,Inner Asia,N-C Asia,26,59
+ES,Spanish,spa,roman,IE,Europe,W and SW Eurasia,-4,40
+FA,Farsi,fas,different,IE,Greater Mesopotamia,W and SW Eurasia,54,32
+FI,Finnish,fin,roman,Finno-Ugric,Inner Asia,N-C Asia,25,62
+FR,French,fra,roman,IE,Europe,W and SW Eurasia,25,62
+GE,Georgian,kat,different,Kartvelian,Greater Mesopotamia,W and SW Eurasia,44,42
+GR,Greek,ell,different,IE,Europe,W and SW Eurasia,22,39
+HU,Hungarian,hun,roman,Finno-Ugric,Europe,W and SW Eurasia,20,47
+IT,Italian,ita,roman,IE,Europe,W and SW Eurasia,12,43
+JP,Japanese,jpn,different,Japanese,N Coast Asia,N-C Asia,140,37
+KR,Korean,kor,different,Korean,N Coast Asia,N-C Asia,128,37.5
+MG,Malagasy,mlg,roman,Austronesian,Southeast Asia,S/SE Asia,47,-20
+MS,Malaysian,mly,roman,Austronesian,Southeast Asia,S/SE Asia,102,3
+PL,Polish,pol,roman,IE,Europe,W and SW Eurasia,20,52
+PT,Portuguese,por,roman,IE,Europe,W and SW Eurasia,-8,39
+RO,Romanian,ron,roman,IE,Europe,W and SW Eurasia,25,46
+RU,Russian,rus,different,IE,Inner Asia,N-C Asia,38,56
+SE,Swedish,swe,roman,IE,Europe,W and SW Eurasia,15,60
+TA,Tamil,tam,different,Dravidian,Indic,S/SE Asia,78,11
+TH,Thai,tha,different,Tai-Kadai,Southeast Asia,S/SE Asia,101,16
+TR,Turkish,tur,roman,Turkic,Greater Mesopotamia,W and SW Eurasia,35,39
+US,English US,eng,roman,IE,Europe,W and SW Eurasia,-77,39
+ZU,Zulu,zul,roman,Benue-Congo,S Africa,Africa,30,-30

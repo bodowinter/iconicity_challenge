@@ -1,0 +1,160 @@
+﻿subject;age;gender;first-lang;other-lang;dataset
+DE00;13;f;German;0;
+DE01;48;f;German;English;
+DE02;14;m;German;English;
+DE03;74;f;German;0;
+DE04;47;f;German;English;
+DE05;51;m;German;0;
+DE06;70;f;German;0;
+DE07;53;m;German;0;
+DE08;50;f;German;0;
+DE09;47;f;German;English;
+DE10;57;m;German;English;
+DE11;40;f;German;French, English;
+DE12;28;f;German;French, Italian, English;
+DE13;20;f;German;English;
+DE14;30;f;German;English;
+DE15;38;f;German;Dutch, English;
+DE16;26;f;German;English, Spanish;
+DE17;48;f;German;English, French, Polish;
+DE18;23;f;German;English;
+DE19;27;f;German, Turkish;English, French;
+DE20;21;f;German, Portuguese;English, French;
+EN00;??;f;Turkish;0;
+PL00;32;f;Polish;English;
+SR01;49;f;Portuguese;English (restricted reading skills);
+SR02;71;m;Portuguese;0;
+SR03;15;f;Portuguese;0;
+SR04;75;m;Portuguese;0;
+SR05;63;f;Portuguese;0;
+SR06;20;f;Portuguese;0;
+SR07;47;f;Portuguese;0;
+SR08;60;m;Portuguese;0;
+SR09;55;f;Portuguese;0;
+SR10;33;f;Portuguese;0;
+SR11;22;f;Portuguese;0;
+SR12;50;f;Portuguese;0;
+SR13;39;f;Portuguese;0;
+SR14;15;m;Portuguese;0;
+SR15;34;f;Portuguese;0;
+VA01;35;m;Port Vato;Bislama;
+VA02;35;m;Port Vato;Bislama;
+VA03;25;m;Port Vato;Bislama;
+VA04;28;f;Port Vato;Bislama;
+VA05;36;m;Port Vato;Bislama;
+VA06;50;f;Port Vato;Bislama;
+VA07;60;m;Port Vato;Bislama;
+VA08;52;m;Port Vato;Bislama;
+VA09;32;m;Port Vato;Bislama;
+VA10;45;f;Port Vato;Bislama;
+VA11;42;f;Port Vato;Bislama;
+VA12;50;m;Port Vato;Bislama;
+BE01;19;f;English;0;1
+BE02;19;f;English;0;2
+BE03;19;f;English;Yoruba;3
+BE04;19;f;English;0;4
+BE05;19;f;English;0;1
+BE06;20;f;English;Cantonese, Mandarin, Spanish;2
+BE07;20;f;English;Punjabi;3
+BE08;19;f;English;British Sign Language;4
+BE09;19;m;English;0;1
+BE10;19;f;English;0;2
+BE11;19;f;English;Spanish;3
+BE12;19;f;English;Finnish;4
+BE13;19;f;English;0;1
+BE14;20;f;German;English, Spanish;2
+BE15;22;f;English;Urdu, Punjabi;3
+BE16;20;f;Urdu;English;4
+BE17;19;f;English;0;1
+BE18;20;f;Somali;English;2
+BE19;20;f;English;Punjabi;3
+BE20;20;m;English;French;4
+BE21;20;f;English;0;1
+BE22;19;f;English;0;2
+BE23;19;f;English;0;3
+BE24;19;m;Portuguese;English;4
+BE25;19;f;English;0;1
+BE26;19;f;English;;2
+BE27;20;f;English;Mandarin;3
+BE28;19;f;English;0;4
+BE29;19;f;English;0;1
+BE30;19;m;Cantonese;English, Mandarin;2
+BE31;19;f;English;0;3
+BE32;20;f;English;French;4
+BE33;19;f;English;0;1
+BE34;19;f;English;0;2
+BE35;20;f;English;0;2
+BE36;21;f;Finish;Swedish, English, Hebrew, German, Russian, Italian;3
+BE37;20;f;English;0;4
+BE38;19;f;English;0;1
+BE39;20;f;English;0;3
+BE40;20;f;English;Welsh, French, Russian, Kurdish;4
+BE41;19;f;English;0;1
+BE56;20;f;English;0;2
+BE42;19;f;English;0;2
+BE43;20;m;English;0;3
+BE44;19;f;English;0;4
+BE45;24;f;English;0;1
+BE46;22;m;English;0;2
+BE47;20;f;English;0;3
+BE48;19;m;English;0;4
+BE49;20;f;English;Polish, French;1
+BE50;19;f;English;0;2
+BE51;19;f;English;0;3
+BE52;23;f;German;English;4
+BE53;19;f;English;0;1
+BE54;20;f;Bulgarian;English, Russian;2
+BE55;21;f;English;0;3
+BR01;20;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;1
+BR02;20;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;2
+BR03;21;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;3
+BR04;20;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;4
+BR05;19;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;1
+BR06;20;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;2
+BR07;20;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;3
+BR08;21;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;4
+BR09;21;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;1
+BR10;20;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;2
+BR11;21;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;3
+BR12;20;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;4
+BR13;20;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;4
+BR14;20;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;1
+BR15;24;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;2
+BR16;22;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;3
+BR17;21;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;4
+BR18;23;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French;1
+BR19;23;f;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French;2
+BR20;51;m;Tashlhiyt Berber;Moroccan Arabic, Standard Arabic, French, English;3
+US01;18;f;English;;1
+US02;19;m;English;;1
+US03;19;m;English;;1
+US04;18;f;English;;1
+US05;19;f;English;;1
+US06;18;f;English;;2
+US07;18;f;English;;2
+US08;18;f;English;;2
+US09;18;f;English;;2
+US10;19;f;English;;2
+US11;19;m;English;;3
+US12;20;m;English;;3
+US13;19;m;English;;3
+US14;19;m;English;;3
+US15;19;m;English;;3
+US17;20;f;English;;4
+US18;18;f;English;;4
+US19;19;f;English;;4
+US20;19;f;English;;4
+US21;19;f;English;;4
+US22;19;f;English;;2
+US23;18;f;English;;3
+US24;21;m;English;;3
+US25;18;f;English;;1
+US26;19;f;English;;4
+PA01;24;f;Palikur;Portuguese;1
+PA02;21;m;Palikur;Portuguese;1
+PA03;35;m;Palikur;Portuguese;1
+PA04;22;m;Palikur;Portuguese;2
+PA05;19;f;Palikur;Portuguese;1
+PA06;18;f;Palikur;Portuguese;1
+PA07;20;m;Palikur;Portuguese;1
+PA08;32;m;Palikur;Portuguese;2
