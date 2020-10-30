@@ -1,0 +1,505 @@
+---
+title: "Field Experiment Analysis"
+author: "Bodo Winter"
+date: "7/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preliminaries
+
+Load packages:
+
+```{r, message = FALSE}
+library(tidyverse) # for data wrangling
+library(ade4) # for Mantel tests (correlations of confusion matrices)
+```
+
+Load data:
+
+```{r, message = FALSE}
+field <- read_csv('../data/field_cleaned.csv')
+lang_info <- read_csv('../data/language_info_field.csv')
+```
+
+Load ggplot2 theme:
+
+```{r}
+source('theme_timo.R')
+```
+
+## Demographics and participant N to report
+
+How many speakers?
+
+```{r}
+length(unique(field$ID))
+```
+
+143 speakers.
+
+```{r}
+table(filter(field, !duplicated(ID))$Sex)
+```
+
+100 women, 44 men.
+
+```{r}
+# Average age:
+
+mean(filter(field, !duplicated(ID))$Age)
+
+# Age range:
+
+range(filter(field, !duplicated(ID))$Age)
+```
+
+From 19 to 75.
+
+How many per language?
+
+```{r}
+table(filter(field, !duplicated(ID))$Name2)
+```
+
+For double-checking codes ("Language") against names ("Name"):
+
+```{r}
+filter(field, !duplicated(Language))
+```
+
+
+* DE	German
+* SR	Portuguese (Brazil by Sabine)
+* VA	Port Vato: Daakie (Vanuatu)
+* BE	British English
+* BR	Tashlhiyt Berber
+* US	American English
+* PA	Palikur (French Guayana by Sabine)
+
+The "Name2" column 
+
+Check the two Englishes in terms of overall accuracy:
+
+```{r}
+filter(field, Language %in% c('BE', 'US')) %>% 
+  group_by(Language) %>% 
+  summarize(ACC = mean(ACC))
+```
+
+## Create a table with all info for the paper:
+
+First, get the counts:
+
+```{r}
+field_counts <- sort(table(filter(field, !duplicated(ID))$Language))
+
+field_counts <- tibble(Language = names(field_counts),
+                       N = as.vector(field_counts))
+```
+
+Then add the language name:
+
+```{r}
+field_counts <- left_join(field_counts,
+                          select(lang_info, Language, Name, Family))
+```
+
+Add non-matching family info by hand:
+
+```{r}
+field_counts[field_counts$Language == 'US', ]$Family <- 'Indo-European'
+field_counts[field_counts$Language == 'BE', ]$Family <- 'Indo-European'
+field_counts[field_counts$Language == 'DE', ]$Family <- 'Indo-European'
+field_counts[field_counts$Language == 'SR', ]$Family <- 'Indo-European'
+```
+
+Add descriptive accuracies:
+
+```{r}
+field_accs <- field %>% group_by(Name) %>% 
+  summarize(ACC = mean(ACC))
+
+field_counts[field_counts$Name == 'English US', ]$Name <- 'English (US)'
+field_counts[field_counts$Name == 'English UK', ]$Name <- 'English (UK)'
+
+field_accs[field_accs$Name == 'Portuguese', ]$Name <- 'Brazilian Portuguese'
+
+field_counts <- left_join(field_accs, field_counts)
+```
+
+Sort by language family:
+
+```{r}
+field_counts <- arrange(field_counts, Family, desc(N), Name)
+```
+
+Round accuracy:
+
+```{r}
+field_counts <- mutate(field_counts,
+                       ACC = round(ACC, 3))
+```
+
+Sort columns:
+
+```{r}
+field_counts <- select(field_counts,
+                       Name, Family, N, ACC)
+```
+
+Write this to a table:
+
+```{r}
+write_csv(field_counts,
+          '../data/field_experiment_counts.csv')
+```
+
+Report how many speakers we have per language on average:
+
+```{r}
+mean(field_counts$N)
+```
+
+
+## Descriptive statistics
+
+Check overall accuracy across languages:
+
+```{r}
+str_c(round(mean(field$ACC), 3) * 100, '%')
+```
+
+In comparison, chance is:
+
+```{r}
+str_c(round(1/12, 3) * 100, '%')
+```
+
+Check accuracy by language:
+
+```{r}
+lang_avgs <- field %>% group_by(Language, Name) %>% 
+  summarize(ACC = mean(ACC)) %>% 
+  arrange(desc(ACC))
+
+# Check:
+
+lang_avgs %>% print(n = Inf)
+```
+
+Check accuracy by item:
+
+```{r}
+item_avgs <- field %>% group_by(Meaning, subcategory) %>% 
+  summarize(ACC = mean(ACC)) %>% 
+  arrange(desc(ACC))
+
+# Check:
+
+item_avgs %>% print(n = Inf)
+
+# Externalize:
+
+write_csv(mutate(item_avgs, ACC = round(ACC, 2)), '../data/field_table.csv')
+```
+
+Check accuracy by meaning subcategories:
+
+```{r}
+field %>% group_by(subcategory) %>% 
+  summarize(ACC = mean(ACC)) %>% 
+  arrange(desc(ACC)) %>% 
+  print(n = Inf)
+```
+
+"People" and "animal" are almost exactly the same. For the purposes of this analysis, we can lump "people" and "animal" together as "animate", which is in the "Animacy column":
+
+
+```{r}
+# Compute averages:
+
+animacy_avgs <- field %>% group_by(Animacy) %>% 
+  summarize(ACC = mean(ACC))
+
+# Check:
+
+animacy_avgs
+```
+
+Recompute item averages with animacy information, which is only used for plotting later:
+
+```{r}
+item_avgs <- field %>% group_by(Meaning, Animacy) %>% 
+  summarize(ACC = mean(ACC)) %>% 
+  arrange(desc(ACC))
+```
+
+Check accuracy by team:
+
+```{r}
+field %>% group_by(Team) %>% 
+  summarize(ACC = mean(ACC)) %>% 
+  arrange(desc(ACC)) %>% 
+  print(n = Inf)
+```
+
+Accuracy by speaker:
+
+```{r}
+speaker_avgs <- field %>% group_by(ID, Language, Sex, Age) %>% 
+  summarize(ACC = mean(ACC)) %>% 
+  arrange(desc(ACC)) %>% 
+  print(n = Inf)
+
+# Check:
+
+sum(speaker_avgs > 1/12) / nrow(speaker_avgs)
+```
+
+All speakers above chance!
+
+Check accuracy by gender:
+
+```{r}
+speaker_avgs %>% group_by(Sex) %>% 
+  summarize(ACC = mean(ACC))
+```
+
+Check accuracy by age:
+
+```{r}
+# Correlation value:
+
+with(speaker_avgs, cor(Age, ACC, method = 'spearman'))
+```
+
+Older speakers are worse. Of course, one should be careful in interpreting this correlation, as the different languages have different overall ages, i.e., language is conflated with age:
+
+```{r}
+speaker_avgs %>% group_by(Language) %>% 
+  summarize(Age = mean(Age))
+```
+
+## Marcus's descriptive statistics: how many meanings per language above chance?
+
+A simple way to summarize this data is to check how many meanings are guessed above chance per language.
+
+First, let's get a vector with the language names which we'll use for looping:
+
+```{r}
+languages <- unique(field$Language)
+
+# Check:
+
+languages
+```
+
+Put this into a tibble:
+
+```{r}
+meanings_per_language <- tibble(Language = languages)
+meanings_per_language$N_over_chance <- NA
+
+# Check:
+
+meanings_per_language
+```
+
+Loop through languages and get the N of items that have > 1/12 accuracy:
+
+```{r}
+for (i in seq_along(languages)) {
+  this_lang <- languages[i]
+  these_avgs <- filter(field, Language == this_lang) %>%
+    group_by(Meaning) %>% 
+    summarize(ACC = mean(ACC))
+  meanings_per_language[i, ]$N_over_chance <- sum(these_avgs$ACC > 1/12)
+}
+```
+
+Check the results:
+
+```{r}
+meanings_per_language
+```
+
+
+## Publication-ready plots:
+
+Accuracy across languages:
+
+```{r}
+lang_avgs %>%
+  ggplot(aes(x = reorder(Name, ACC),
+             y = ACC, fill = reorder(Name, ACC))) +
+  geom_col() +
+  geom_hline(yintercept = 1 / 12, linetype = 2, size = 1.5) +
+  labs(x = '', y = 'Accuracy\n') +
+  scale_fill_viridis_d(option = 'D', begin = 0.3, end = 0.8) +
+  theme_timo + 
+  coord_cartesian(ylim = c(0, 1.0)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = 'bold', size = 20),
+        axis.text.y = element_text(face = 'bold', size = 14),
+        axis.title = element_text(face = 'bold', size = 24),
+        legend.position = 'none')
+ggsave('../figures/field_languages.png', width = 8, height = 6)
+```
+
+Accuracy across languages, with BE and AE differentiated:
+
+```{r}
+field %>% group_by(Name2) %>% 
+  summarize(ACC = mean(ACC)) %>% 
+  arrange(desc(ACC)) %>% 
+  ggplot(aes(x = reorder(Name2, ACC),
+             y = ACC, fill = reorder(Name2, ACC))) +
+  geom_col() +
+  geom_hline(yintercept = 1 / 12, linetype = 2, size = 1.5) +
+  labs(x = '', y = 'Accuracy\n') +
+  scale_fill_viridis_d(option = 'D', begin = 0.3, end = 0.8) +
+  theme_timo + 
+  coord_cartesian(ylim = c(0, 1.0)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = 'bold', size = 20),
+        axis.text.y = element_text(face = 'bold', size = 14),
+        axis.title = element_text(face = 'bold', size = 24),
+        legend.position = 'none')
+ggsave('../figures/field_languages_AE_vs_BE.png', width = 8, height = 6)
+```
+
+
+Accuracy across items:
+
+```{r}
+item_avgs %>%
+  ggplot(aes(x = reorder(Meaning, ACC),
+             y = ACC,
+             fill = Animacy)) +
+  geom_col() +
+  geom_hline(yintercept = 1 / 12, linetype = 2, size = 1.5) +
+  labs(x = '', y = 'Accuracy\n') +
+  scale_fill_brewer(palette = 'Dark2') +
+  theme_timo + 
+  ylim(0, 1.0) +
+  theme(axis.text.x = element_text(face = 'bold', size = 14),
+        axis.text.y = element_text(face = 'bold', size = 16),
+        axis.title = element_text(face = 'bold', size = 24),
+        legend.position = c(0.8, 0.2)) + 
+  coord_flip()
+ggsave('../figures/field_items.png', width = 12, height = 12)
+```
+
+## Confusion matrices:
+
+Check confusion, first for English:
+
+```{r}
+EN <- filter(field, Language == 'EN')
+EN_tab <- table(EN$Meaning, EN$Choice)
+EN_tab
+```
+
+Looks good. We want to do this for all of the six languages an then correlate these tables with the same tables from the other languages.
+
+We can re-use the "languages" vector from above for this.
+
+Create an empty 6 * 6 matrix (filled with NAs) to be filled with all the languages:
+
+```{r}
+M <- rep(NA, length(languages) * length(languages))
+M <- matrix(M, nrow = length(languages))
+
+# Append row and column names:
+
+rownames(M) <- languages
+colnames(M) <- languages
+
+# Check:
+
+M
+```
+
+Create two copies of this matrix, one for the correlation coefficients, another one for the p-values:
+
+```{r}
+r_vals <- M
+p_vals <- M
+```
+
+Loop through languages and create distance matrices:
+
+```{r}
+for (i in seq_along(languages)) {
+  # Cross-tabulation:
+  
+  this_tab <- with(filter(field, Language == languages[i]), table(Meaning, Choice))
+  
+  # Transform into distance matrix object (needed for Mantel test):
+  
+  this_tab <- as.dist(this_tab)
+  
+  # Save this in an object with the name pattern "EN_tab" etc.:
+  
+  assign(str_c(languages[i], '_tab'), this_tab)
+}
+```
+
+
+Loop through languages and put this information into the corresponding matrices:
+
+```{r, warning = FALSE, message = FALSE}
+for (i in seq_along(languages)) {
+  lang1 <- languages[i]
+  for (j in seq_along(languages)) {
+    lang2 <- languages[j]
+    if (lang1 != lang2) {
+      # Retrieve previously stored distance matrices:
+      
+      tab1 <- get(str_c(languages[i], '_tab'))
+      tab2 <- get(str_c(languages[j], '_tab'))
+      
+      # Perform correlation:
+      
+      this_mantel <- mantel.rtest(tab1, tab2, nrepet = 999)
+      
+      # Store correlation value and p-value:
+      
+      r_vals[i, j] <- this_mantel$obs
+      p_vals[i, j] <- this_mantel$pvalue
+      
+    }
+  }
+}
+```
+
+Check results:
+
+```{r}
+## Correlation values:
+
+round(r_vals, 2)
+```
+
+What's the minimum and maximum correlation value?
+
+```{r}
+range(r_vals, na.rm = TRUE)
+```
+
+What's the mean correlation?
+
+```{r}
+mean(r_vals, na.rm = TRUE)
+```
+
+What are the p-values?:
+
+```{r}
+p_vals
+```
+
+This completes this analysis.
+

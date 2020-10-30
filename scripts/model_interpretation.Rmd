@@ -1,0 +1,605 @@
+---
+title: "Model Interpretation"
+author: "Bodo Winter"
+date: "16/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preliminaries
+
+Load packages:
+
+```{r, message = FALSE}
+library(tidyverse)
+library(brms)
+library(gridExtra)
+```
+
+Load language data for plotting:
+
+```{r, message = FALSE}
+lang_info <- read_csv('../data/language_info.csv')
+field_info <- read_csv('../data/language_info_field.csv')
+```
+
+Load ggplot2 theme:
+
+```{r}
+source('theme_timo.R')
+```
+
+Load models:
+
+```{r}
+load('../models/main_mdl.RData')
+load('../models/field_animacy_mdl.RData')
+load('../models/field_mdl.RData')
+```
+
+## Posterior predictive checks:
+
+Perform posterior predictive checks:
+
+```{r, fig.width = 8, fig.height = 6, cache = TRUE}
+pp_check(main_mdl, nsamples = 1000)
+pp_check(field_mdl, nsamples = 1000)
+pp_check(field_animacy_mdl, nsamples = 1000)
+```
+
+They all look pretty good! (The black line falls well within the rest of the lines)
+
+## Summarize models, first accuracy-only, without consideration of animacy:
+
+Summarize models, first the main model for the online data:
+
+```{r}
+summary(main_mdl)
+```
+
+What is the estimated average accuracy?
+
+```{r}
+plogis(fixef(main_mdl)[, 1])
+
+# Lower bound of 95% CI:
+
+plogis(fixef(main_mdl)[, 3])
+
+# Upper bound of 95% CI:
+
+plogis(fixef(main_mdl)[, 4])
+```
+
+The lower threshold does not include chance level (= 1/6).
+
+Extract posterior samples:
+
+```{r}
+main_samples <- posterior_samples(main_mdl)
+field_samples <- posterior_samples(field_mdl)
+```
+
+What is the posterior probability of this being above the chancel threshold of 1/6?
+
+```{r}
+myposts <- main_samples$b_Intercept
+sum(myposts > qlogis(1/6)) / length(myposts)
+```
+
+100%, not a single posterior sample below the chance threshold of 1/6.
+
+What is the posterior probability of the speaker random effect being larger than the language random effect?
+
+```{r}
+sum(main_samples$sd_ID__Intercept > main_samples$sd_Language__Intercept) / nrow(main_samples)
+```
+
+
+Check the same for the field data:
+
+```{r}
+summary(field_mdl)
+```
+
+What is the estimated average accuracy?
+
+```{r}
+plogis(fixef(field_mdl)[, 1])
+
+# Lower bound of 95% CI:
+
+plogis(fixef(field_mdl)[, 3])
+
+# Upper bound of 95% CI:
+
+plogis(fixef(field_mdl)[, 4])
+```
+
+The lower threshold does not include chance level (= 1/12).
+
+What is the posterior probability of this being above the chancel threshold of 1/12?
+
+```{r}
+myposts <- field_samples$b_Intercept
+sum(myposts > qlogis(1/12)) / length(myposts)
+```
+
+99%, very few posterior samples below the chance threshold of 1/12.
+
+## Summarize models, with animacy predictors:
+
+Check same for field model:
+
+```{r}
+summary(field_animacy_mdl)
+```
+
+Check coefficients, first the estimate (times two because sum-coded):
+
+```{r}
+round(fixef(field_animacy_mdl)[2, 1] * 2, 2)
+```
+
+The standard error also needs to be multiplied by two:
+
+```{r}
+round(fixef(field_animacy_mdl)[2, 2] * 2, 2)
+```
+
+The odds:
+
+```{r}
+round(exp(fixef(field_animacy_mdl)[2, 1] * 2), 2)
+```
+
+The posterior probability of the animacy coefficient being above zero:
+
+```{r}
+animacy_samples <- posterior_samples(field_animacy_mdl)
+sum(animacy_samples$b_Animacy1 > 0) / nrow(animacy_samples)
+```
+
+## Plotting the model estimates, online experiment:
+
+Getting the posteriors per language:
+
+```{r}
+lang_samples <- select(main_samples, contains('Language'))
+head(lang_samples)
+```
+
+Get rid of the first, which is across all of them:
+
+```{r}
+lang_samples <- lang_samples[, -1]
+```
+
+The genus information needs to be added for each language. First, extract the family info:
+
+```{r}
+benue_congo <- main_samples$`r_Genus[Benue-Congo,Intercept]`
+finno_ugric <- main_samples$`r_Genus[Finno-Ugric,Intercept]`
+IE <- main_samples$`r_Genus[IE,Intercept]`
+korean <- main_samples$`r_Genus[Korean,Intercept]`
+kartvelian <- main_samples$`r_Genus[Kartvelian,Intercept]`
+sino_tibetan <- main_samples$`r_Genus[Sino-Tibetan,Intercept]`
+tai_kadai <- main_samples$`r_Genus[Tai-Kadai,Intercept]`
+turkic <- main_samples$`r_Genus[Turkic,Intercept]`
+afro_asiatic <- main_samples$`r_Genus[Afro-Asiatic,Intercept]`
+japanese <- main_samples$`r_Genus[Japanese,Intercept]`
+```
+
+Extract intercept:
+
+```{r}
+int <- main_samples$b_Intercept
+```
+
+Add the language family estimates and the intercepts to the respective languages:
+
+```{r}
+lang_samples$`r_Language[AL,Intercept]` <- lang_samples$`r_Language[AL,Intercept]` + IE + int
+lang_samples$`r_Language[AM,Intercept]` <- lang_samples$`r_Language[AM,Intercept]` + afro_asiatic + int # need to fix
+lang_samples$`r_Language[CN,Intercept]` <- lang_samples$`r_Language[CN,Intercept]` + sino_tibetan + int
+lang_samples$`r_Language[DE,Intercept]` <- lang_samples$`r_Language[DE,Intercept]` + IE + int
+lang_samples$`r_Language[DK,Intercept]` <- lang_samples$`r_Language[DK,Intercept]` + IE + int
+
+lang_samples$`r_Language[EE,Intercept]` <- lang_samples$`r_Language[EE,Intercept]` + finno_ugric + int
+lang_samples$`r_Language[EN,Intercept]` <- lang_samples$`r_Language[EN,Intercept]` + IE + int
+lang_samples$`r_Language[ES,Intercept]` <- lang_samples$`r_Language[ES,Intercept]` + IE + int
+lang_samples$`r_Language[FA,Intercept]` <- lang_samples$`r_Language[FA,Intercept]` + IE + int
+lang_samples$`r_Language[FI,Intercept]` <- lang_samples$`r_Language[FI,Intercept]` + finno_ugric + int
+  
+lang_samples$`r_Language[FR,Intercept]` <- lang_samples$`r_Language[FR,Intercept]` + IE + int
+lang_samples$`r_Language[GE,Intercept]` <- lang_samples$`r_Language[GE,Intercept]` + kartvelian + int
+lang_samples$`r_Language[GR,Intercept]` <- lang_samples$`r_Language[GR,Intercept]` + IE + int
+lang_samples$`r_Language[HU,Intercept]` <- lang_samples$`r_Language[HU,Intercept]` + finno_ugric + int
+lang_samples$`r_Language[IT,Intercept]` <- lang_samples$`r_Language[IT,Intercept]` + IE + int
+  
+lang_samples$`r_Language[JP,Intercept]` <- lang_samples$`r_Language[JP,Intercept]` + japanese + int
+lang_samples$`r_Language[KR,Intercept]` <- lang_samples$`r_Language[KR,Intercept]` + korean + int
+lang_samples$`r_Language[PL,Intercept]` <- lang_samples$`r_Language[PL,Intercept]` + IE + int
+lang_samples$`r_Language[PT,Intercept]` <- lang_samples$`r_Language[PT,Intercept]` + IE + int
+lang_samples$`r_Language[RO,Intercept]` <- lang_samples$`r_Language[RO,Intercept]` + IE + int
+  
+lang_samples$`r_Language[RU,Intercept]` <- lang_samples$`r_Language[RU,Intercept]` + IE + int
+lang_samples$`r_Language[SE,Intercept]` <- lang_samples$`r_Language[SE,Intercept]` + IE + int
+lang_samples$`r_Language[TH,Intercept]` <- lang_samples$`r_Language[TH,Intercept]` + tai_kadai + int
+lang_samples$`r_Language[TR,Intercept]` <- lang_samples$`r_Language[TR,Intercept]` + turkic + int
+lang_samples$`r_Language[ZU,Intercept]` <- lang_samples$`r_Language[ZU,Intercept]` + benue_congo + int
+```
+
+Compute 95% CI for all of these:
+
+```{r}
+lower_CIs <- apply(lang_samples, FUN = function(x) quantile(x, 0.025), MARGIN = 2)
+upper_CIs <- apply(lang_samples, FUN = function(x) quantile(x, 0.975), MARGIN = 2)
+post_mean <- colMeans(lang_samples)
+```
+
+Put those into a table, with logistic transform back to probabilities:
+
+```{r}
+lang_intervals <- tibble(Language = str_extract(colnames(lang_samples), '[A-Z]{2,2}'),
+                         lower_CI = plogis(lower_CIs),
+                         upper_CI = plogis(upper_CIs),
+                         M = plogis(post_mean))
+```
+
+Merge with name for plotting:
+
+```{r}
+lang_intervals$Name <- lang_info[match(lang_intervals$Language, lang_info$Language), ]$Name
+```
+
+Change "English UK" label to just "English":
+
+```{r}
+lang_intervals[lang_intervals$Language == 'EN', ]$Name <- 'English'
+```
+
+"Amharic" is actually "Armenian":
+
+```{r}
+lang_intervals[lang_intervals$Name == 'Amharic', ]$Name <- 'Armenian'
+```
+
+Change the order of language levels according to the posterior mean:
+
+```{r}
+lang_intervals <- arrange(lang_intervals, M)
+lang_intervals <- mutate(lang_intervals,
+                         Name = factor(Name, levels = lang_intervals$Name))
+```
+
+Make a plot with accuracy per language:
+
+```{r, fig.width = 10, fig.height = 6}
+lang_plot <- ggplot(data = lang_intervals,
+                    mapping = aes(x = Name, y = M,
+                                  ymin = lower_CI, ymax = upper_CI)) +
+  geom_errorbar(width = 0.3, lwd = 1) +
+  geom_point(pch = 22, size = 7, fill = 'red', col = 'black', stroke = 1) +
+  geom_hline(yintercept = 1/6, linetype = 2) +
+  theme_timo +
+  annotate('text', label = 'Chance level', x = 24.5, y = 1/6 + 0.04,
+           size = 10, fontface = 'bold', hjust = 1) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,
+                                   face = 'bold', size = 24),
+        axis.title.y = element_text(margin = margin(t = 0, r = 50, b = 0, l = 0),
+                                    size = 30),
+        axis.text.y = element_text(face = 'bold', size = 20),
+        plot.title = element_text(face = 'bold', size = 36, hjust = 0,
+                                  margin = margin(t = 0, r = 0, b = 20, l = 0))) +
+  labs(title = '(a) Estimated accuracy by language',
+       x = '', y = 'Posterior probability')
+lang_plot
+```
+
+Getting the posteriors per meaning:
+
+```{r}
+meaning_samples <- select(main_samples, contains('Meaning'))
+head(meaning_samples)
+```
+
+Get rid of the first, which is across all of them:
+
+```{r}
+meaning_samples <- meaning_samples[, -1]
+```
+
+Add the intercept to this one as well:
+
+```{r}
+for (i in 1:ncol(meaning_samples)) {
+  meaning_samples[, i] <- meaning_samples[, i] + int
+}
+```
+
+Compute 95% CI for all of these:
+
+```{r}
+lower_CIs <- apply(meaning_samples, 
+                   FUN = function(x) quantile(x, 0.025), MARGIN = 2)
+upper_CIs <- apply(meaning_samples,
+                   FUN = function(x) quantile(x, 0.975), MARGIN = 2)
+post_mean <- colMeans(meaning_samples)
+```
+
+Put those into a table, with logistic transform back to probabilities:
+
+```{r}
+meaning_intervals <- tibble(Meaning = str_extract(colnames(meaning_samples),
+                                                  '\\[[a-z]{2,10}'),
+                            lower_CI = plogis(lower_CIs),
+                            upper_CI = plogis(upper_CIs),
+                            M = plogis(post_mean))
+meaning_intervals <- mutate(meaning_intervals,
+                            Meaning = str_replace(Meaning, '\\[', ''))
+```
+
+Change the order of language levels according to the posterior mean:
+
+```{r}
+meaning_intervals <- arrange(meaning_intervals, M)
+meaning_intervals <- mutate(meaning_intervals,
+                            Meaning = factor(Meaning,
+                                             levels = meaning_intervals$Meaning))
+```
+
+Make a plot with accuracy per meaning:
+
+```{r, fig.width = 10, fig.height = 6}
+meaning_plot <- ggplot(data = meaning_intervals,
+                    mapping = aes(x = Meaning, y = M,
+                                  ymin = lower_CI, ymax = upper_CI)) +
+  geom_errorbar(width = 0.3, lwd = 1) +
+  geom_point(pch = 22, size = 7, fill = 'red', col = 'black', stroke = 1) +
+  geom_hline(yintercept = 1/6, linetype = 2) +
+  theme_timo +
+  annotate('text', label = 'Chance level', x = 30.5, y = 1/6 + 0.04,
+           size = 10, fontface = 'bold', hjust = 1) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,
+                                   face = 'bold', size = 24),
+        axis.title.y = element_text(margin = margin(t = 0, r = 50, b = 0, l = 0),
+                                    size = 30),
+        axis.text.y = element_text(face = 'bold', size = 20),
+        plot.title = element_text(face = 'bold', size = 36, hjust = 0,
+                                  margin = margin(t = 0, r = 0, b = 20, l = 0))) +
+  labs(title = '(b) Estimated accuracy by meaning',
+       x = '', y = 'Posterior probability')
+meaning_plot
+```
+
+Put both together:
+
+```{r}
+my_layout <- rbind(c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(1, 1, 1, 1, 1, 1, 1, 1, NA),
+                   c(NA, NA, NA, NA, NA, NA, NA, NA, NA),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2))
+multi_plot <- grid.arrange(lang_plot, meaning_plot,
+                           layout_matrix = my_layout)
+ggsave(plot = multi_plot, '../figures/web_models.pdf',
+       width = 24, height = 22)
+ggsave(plot = multi_plot, '../figures/web_models.png',
+       width = 24, height = 22)
+```
+
+## Field experiment:
+
+Getting the posteriors per language:
+
+```{r}
+field_lang_samples <- select(field_samples, contains('Language'))
+head(field_lang_samples)
+```
+
+Get rid of the first, which is across all of them:
+
+```{r}
+field_lang_samples <- field_lang_samples[, -1]
+```
+
+Add the intercept:
+
+```{r}
+for (i in 1:ncol(field_lang_samples)) {
+  field_lang_samples[, i] <- field_lang_samples[, i] + field_samples$b_Intercept
+}
+```
+
+Compute 95% CI for all of these:
+
+```{r}
+lower_CIs <- apply(field_lang_samples, FUN = function(x) quantile(x, 0.025), MARGIN = 2)
+upper_CIs <- apply(field_lang_samples, FUN = function(x) quantile(x, 0.975), MARGIN = 2)
+post_mean <- colMeans(field_lang_samples)
+```
+
+Put those into a table, with logistic transform back to probabilities:
+
+```{r}
+field_lang_intervals <- tibble(Language = str_extract(colnames(field_lang_samples), '[A-Z]{2,2}'),
+                               lower_CI = plogis(lower_CIs),
+                               upper_CI = plogis(upper_CIs),
+                               M = plogis(post_mean))
+```
+
+Add language names for plotting:
+
+```{r}
+field_lang_intervals$Name <- character(nrow(field_lang_intervals))
+field_lang_intervals[field_lang_intervals$Language == 'DE', ]$Name <- 'German'
+field_lang_intervals[field_lang_intervals$Language == 'US', ]$Name <- 'English (US)'
+field_lang_intervals[field_lang_intervals$Language == 'BE', ]$Name <- 'English (UK)'
+field_lang_intervals[field_lang_intervals$Language == 'BR', ]$Name <- 'Tashlhiyt Berber'
+field_lang_intervals[field_lang_intervals$Language == 'PA', ]$Name <- 'Palikur'
+field_lang_intervals[field_lang_intervals$Language == 'VA', ]$Name <- 'Daakie'
+field_lang_intervals[field_lang_intervals$Language == 'SR', ]$Name <- 'Brazilian Portuguese'
+```
+
+Change the order of language levels according to the posterior mean:
+
+```{r}
+field_lang_intervals <- arrange(field_lang_intervals, M)
+field_lang_intervals <- mutate(field_lang_intervals,
+                         Name = factor(Name, levels = field_lang_intervals$Name))
+```
+
+Make a plot with accuracy per language:
+
+```{r, fig.width = 10, fig.height = 6}
+field_lang_plot <- ggplot(data = field_lang_intervals,
+                    mapping = aes(x = Name, y = M, ymin = lower_CI, ymax = upper_CI)) +
+  geom_errorbar(width = 0.3, lwd = 1) +
+  geom_point(pch = 22, size = 7, fill = 'red',
+             col = 'black', stroke = 1) +
+  geom_hline(yintercept = 1/12, linetype = 2) +
+  theme_timo +
+  annotate('text', label = 'Chance level', x = 7.5, y = 1/12 + 0.04,
+           size = 10, fontface = 'bold', hjust = 1) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,
+                                   face = 'bold', size = 24),
+        axis.title.y = element_text(margin = margin(t = 0, r = 50, b = 0, l = 0),
+                                    size = 30),
+        axis.text.y = element_text(face = 'bold', size = 20),
+        plot.title = element_text(face = 'bold', size = 36, hjust = 0,
+                                  margin = margin(t = 0, r = 0, b = 20, l = 0))) +
+  labs(title = '(a) Estimated accuracy by language',
+       x = '', y = 'Posterior probability')
+field_lang_plot
+```
+
+Getting the posteriors per meaning:
+
+```{r}
+field_meaning_samples <- select(field_samples, contains('Meaning'))
+head(field_meaning_samples)
+```
+
+Get rid of the first, which is across all of them:
+
+```{r}
+field_meaning_samples <- field_meaning_samples[, -1]
+```
+
+Add the intercept to all of them:
+
+```{r}
+for (i in 1:ncol(field_meaning_samples)) {
+  field_meaning_samples[, i] <- field_meaning_samples[, i] + field_samples$b_Intercept
+}
+```
+
+Compute 95% CI for all of these:
+
+```{r}
+lower_CIs <- apply(field_meaning_samples, FUN = function(x) quantile(x, 0.025), MARGIN = 2)
+upper_CIs <- apply(field_meaning_samples, FUN = function(x) quantile(x, 0.975), MARGIN = 2)
+post_mean <- colMeans(field_meaning_samples)
+```
+
+Put those into a table, with logistic transform back to probabilities:
+
+```{r}
+field_meaning_intervals <- tibble(Meaning = str_extract(colnames(field_meaning_samples), '\\[[a-z]{2,10}'),
+                            lower_CI = plogis(lower_CIs),
+                            upper_CI = plogis(upper_CIs),
+                            M = plogis(post_mean))
+field_meaning_intervals <- mutate(field_meaning_intervals,
+                            Meaning = str_replace(Meaning, '\\[', ''))
+```
+
+Change the order of language levels according to the posterior mean:
+
+```{r}
+field_meaning_intervals <- arrange(field_meaning_intervals, M)
+field_meaning_intervals <- mutate(field_meaning_intervals,
+                                  Meaning = factor(Meaning, levels = field_meaning_intervals$Meaning))
+```
+
+Make a plot with accuracy per meaning:
+
+```{r, fig.width = 10, fig.height = 6}
+field_meaning_plot <- ggplot(data = field_meaning_intervals,
+                    mapping = aes(x = Meaning, y = M, ymin = lower_CI, ymax = upper_CI)) +
+  geom_errorbar(width = 0.3, lwd = 1) +
+  geom_point(pch = 22, size = 7, fill = 'red',
+             col = 'black', stroke = 1) +
+  geom_hline(yintercept = 1/12, linetype = 2) +
+  theme_timo +
+  annotate('text', label = 'Chance level', x = 12.5, y = 1/12 + 0.04,
+           size = 10, fontface = 'bold', hjust = 1) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1,
+                                   face = 'bold', size = 24),
+        axis.title.y = element_text(margin = margin(t = 0, r = 50, b = 0, l = 0),
+                                    size = 30),
+        axis.text.y = element_text(face = 'bold', size = 20),
+        plot.title = element_text(face = 'bold', size = 36, hjust = 0,
+                                  margin = margin(t = 0, r = 0, b = 20, l = 0))) +
+  labs(title = '(b) Estimated accuracy by meaning',
+       x = '', y = 'Posterior probability')
+field_meaning_plot
+```
+
+Put both together:
+
+```{r}
+my_layout <- rbind(c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(1, 1, 1, 1, 1, 1, NA, NA, NA),
+                   c(NA, NA, NA, NA, NA, NA, NA, NA, NA),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2),
+                   c(2, 2, 2, 2, 2, 2, 2, 2, 2))
+field_multi_plot <- grid.arrange(field_lang_plot, field_meaning_plot,
+                           layout_matrix = my_layout)
+ggsave(plot = field_multi_plot, '../figures/field_models.pdf',
+       width = 20, height = 22)
+ggsave(plot = field_multi_plot, '../figures/field_models.png',
+       width = 20, height = 22)
+```
+
+This completes this analysis.
+

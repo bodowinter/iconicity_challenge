@@ -65,6 +65,13 @@ length(unique(web$Language))
 
 Minus 1 for English UK == English US when we look at the language level.
 
+Let's merge UK and US English for the web experiment. For the field experiment, this distinction is meaningful as the experiments were actually conducted in the US and the UK. In the web experiment, the "UK" version was distributed online, so accessible to people elsewhere. A number of Americans, Canadians etc. also filled out the survey.
+
+```{r}
+web <- mutate(web,
+              Language = ifelse(Language == 'US', 'EN', Language))
+```
+
 How many families?
 
 ```{r}
@@ -76,6 +83,16 @@ How many speakers per language?
 ```{r}
 sort(table(filter(web, !duplicated(ID))$Language))
 ```
+
+How often repeated?
+
+```{r}
+web %>% count(Rep) %>%
+  mutate(prop = n / sum(n))
+
+mean(web$Rep)
+```
+
 
 ## Create a table with all info for the paper:
 
@@ -113,7 +130,7 @@ Round accuracy:
 
 ```{r}
 web_counts <- mutate(web_counts,
-                     ACC = round(ACC, 2))
+                     ACC = round(ACC, 3))
 ```
 
 Sort columns:
@@ -141,7 +158,7 @@ mean(web_counts$N)
 Check overall accuracy:
 
 ```{r}
-str_c(round(mean(web$ACC), 2) * 100, '%')
+str_c(round(mean(web$ACC), 3) * 100, '%')
 ```
 
 Check accuracy by language:
@@ -195,7 +212,7 @@ item_avgs %>% print(n = Inf)
 Save this for a table that makes Marcus happy:
 
 ```{r}
-write_csv(mutate(item_avgs, ACC = round(ACC, 2)),
+write_csv(mutate(item_avgs, ACC = round(ACC, 3)),
           '../data/by_item_table_web.csv')
 ```
 
@@ -247,8 +264,6 @@ Check accuracy by this variable:
 web %>% group_by(CultureSim) %>% 
   summarize(ACC = mean(ACC))
 ```
-
-
 
 ## Age / gender:
 
@@ -358,6 +373,13 @@ meanings_per_language %>% count(N_over_chance) %>%
 
 ## Check influence of L2:
 
+The English L2 that are in "EN" need to be recorded as L1:
+
+```{r}
+web[web$L2_simplified == 'english L2' & web$Language == 'EN', ]$L2_simplified <- 'English L1'
+```
+
+
 How many speakers are there per L2 category?
 
 ```{r}
@@ -376,7 +398,7 @@ L2_counts
 Proportions:
 
 ```{r}
-round(L2_counts / sum(L2_counts), 2)
+round(L2_counts / sum(L2_counts), 3)
 ```
 
 Check accuracy by the four different categories:
@@ -384,7 +406,7 @@ Check accuracy by the four different categories:
 ```{r}
 web %>% group_by(L2_simplified) %>% 
   summarize(ACC = mean(ACC)) %>% 
-  mutate(ACC = round(ACC, 2))
+  mutate(ACC = round(ACC, 3))
 ```
 
 ## Confusion matrices:
@@ -497,7 +519,7 @@ Check results:
 ```{r}
 ## Correlation values:
 
-round(r_vals, 2)
+round(r_vals, 3)
 ```
 
 What's the minimum and maximum correlation value?
@@ -531,21 +553,9 @@ For how many comparisons would we have to correct?
 length(languages) * (length(languages) - 1) / 2
 ```
 
-300 comparisons! That's a bit ridiculous:
+300 comparisons!
 
-```{r}
-# Vector of adjusted p-values from upper triangle of the matrix:
-
-adjusted_p <- p.adjust(p_vals[upper.tri(p_vals)], method = 'bonferroni', n = 300)
-
-# How many significant?
-
-sum(adjusted_p < 0.05)
-```
-
-None after correction.
-
-The better approach would be to calculate how many we expect to be significant based on chance alone for an alpha level of 0.05.
+Calculate how many we expect to be significant based on chance alone for an alpha level of 0.05.
 
 ```{r}
 300 * 0.05

@@ -107,6 +107,16 @@ web <- filter(web,
               participantage >= 18 | is.na(participantage))
 ```
 
+## For the web experiment, we merge US/UK (we don't know where participants were anyway)
+
+Merge:
+
+```{r}
+web[web$experiment == 'Iconicity (US)', ]$experiment <- 'Iconicity (EN)'
+web[web$Language == 'US', ]$experiment <- 'EN'
+```
+
+
 ## Excluding data points based on playback
 
 First, let's exclude participants who didn't play back the clapping sound, which means we can't verify whether they have done the experiment accurately:
@@ -185,7 +195,7 @@ table(clap_res$Language, clap_res$ACC)
 round(prop.table(table(clap_res$Language, clap_res$ACC), 1), 2)
 ```
 
-Georgian extremely high — coding error? Also, some of the other ones that are relatively high (especially Chinese) seem to be languages with alternative scripts. I suspect some character matching errors here.
+Georgian extremely high, and so is Finnish — coding error? Also, some of the other ones that are relatively high (especially Chinese) seem to be languages with alternative scripts. I suspect some character matching errors here.
 
 What happens with Georgian?
 
@@ -1078,13 +1088,11 @@ web[web$l1 == 'thai' & web$experiment == 'Iconicity (EN)', ]$Language <- 'TH'
 web[web$l1 == 'portuguese' & web$experiment == 'Iconicity (EN)', ]$Language <- 'PT'
 ```
 
-Only two Finnish speakers (in the Englisha and Swedish experiments), and also incomplete Malagasy and Tamil trials. Let's exclude these:
+Incomplete Malagasy and Tamil trials. Let's exclude these:
 
 ```{r}
-web <- filter(web, !l1 %in% c('finnish', 'malagasy', 'tamil'))
+web <- filter(web, !l1 %in% c('malagasy', 'tamil'))
 ```
-
-
 
 ## Simplify table in terms of columns
 

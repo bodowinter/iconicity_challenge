@@ -186,7 +186,9 @@ field <- filter(field, Language != 'PL')
 Add language name information to the data frame:
 
 ```{r}
-field$Name <- 'English'
+field$Name <- NA
+field[field$Language == 'BE', ]$Name <- 'English (UK)'
+field[field$Language == 'US', ]$Name <- 'English (US)'
 field[field$Language == 'DE', ]$Name <- 'German'
 field[field$Language == 'SR', ]$Name <- 'Portuguese'
 field[field$Language == 'VA', ]$Name <- 'Daakie'
@@ -220,7 +222,8 @@ Create an "Animacy" variable from the "subcategory" column (this lumps "People" 
 
 ```{r}
 field <- mutate(field,
-                Animacy = ifelse(subcategory == 'inanimate', 'inanimate', 'animate'))
+                Animacy = ifelse(subcategory == 'inanimate',
+                                 'inanimate', 'animate'))
 ```
 
 ## Save output:

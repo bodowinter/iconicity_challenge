@@ -396,33 +396,36 @@ lang_info &lt;- read_csv('../data/language_info.csv')</code></pre>
 <h2>Demographics and participant N to report</h2>
 <p>How many speakers?</p>
 <pre class="r"><code>length(unique(web$ID))</code></pre>
-<pre><code>## [1] 825</code></pre>
+<pre><code>## [1] 843</code></pre>
 <p>How many men and women?</p>
 <pre class="r"><code>table(filter(web, !duplicated(ID))$Sex)</code></pre>
 <pre><code>## 
 ## \\N   F   M 
-##  38 594 193</code></pre>
+##  38 606 199</code></pre>
 <p>What is the average age and age range?</p>
 <pre class="r"><code># Average age:
 
 mean(filter(web, !duplicated(ID))$Age, na.rm = TRUE)</code></pre>
-<pre><code>## [1] 32.47395</code></pre>
+<pre><code>## [1] 32.46957</code></pre>
 <pre class="r"><code># Age range:
 
 range(filter(web, !duplicated(ID))$Age, na.rm = TRUE)</code></pre>
 <pre><code>## [1] 18 84</code></pre>
 <p>How many languages?</p>
 <pre class="r"><code>length(unique(web$Language))</code></pre>
-<pre><code>## [1] 25</code></pre>
+<pre><code>## [1] 26</code></pre>
 <p>Minus 1 for English UK == English US when we look at the language level.</p>
+<p>Let’s merge UK and US English for the web experiment. For the field experiment, this distinction is meaningful as the experiments were actually conducted in the US and the UK. In the web experiment, the “UK” version was distributed online, so accessible to people elsewhere. A number of Americans, Canadians etc. also filled out the survey.</p>
+<pre class="r"><code>web &lt;- mutate(web,
+              Language = ifelse(Language == 'US', 'EN', Language))</code></pre>
 <p>How many families?</p>
 <pre class="r"><code>length(unique(web$Genus))</code></pre>
 <pre><code>## [1] 10</code></pre>
 <p>How many speakers per language?</p>
 <pre class="r"><code>sort(table(filter(web, !duplicated(ID))$Language))</code></pre>
 <pre><code>## 
-## AL GE TH AM DK SE ZU FA KR RO CN HU RU ES GR TR US EE EN JP PL FR IT PT DE 
-##  7 11 15 16 18 18 18 20 20 25 32 32 32 34 36 38 38 43 43 46 48 51 52 55 77</code></pre>
+## AL GE TH AM FI DK ZU SE FA KR RO CN HU RU ES GR TR EE JP PL FR IT PT DE EN 
+##  7 11 15 16 16 18 18 19 20 20 25 32 32 32 34 36 38 43 46 48 51 52 55 77 82</code></pre>
 </div>
 <div id="create-a-table-with-all-info-for-the-paper" class="section level2">
 <h2>Create a table with all info for the paper:</h2>
@@ -453,13 +456,13 @@ web_counts &lt;- left_join(web_accs, web_counts)</code></pre>
           '../data/web_experiment_counts.csv')</code></pre>
 <p>Report how many speakers we have per language on average:</p>
 <pre class="r"><code>mean(web_counts$N)</code></pre>
-<pre><code>## [1] 33</code></pre>
+<pre><code>## [1] 33.72</code></pre>
 </div>
 <div id="descriptive-statistics" class="section level2">
 <h2>Descriptive statistics</h2>
 <p>Check overall accuracy:</p>
 <pre class="r"><code>str_c(round(mean(web$ACC), 2) * 100, '%')</code></pre>
-<pre><code>## [1] &quot;64%&quot;</code></pre>
+<pre><code>## [1] &quot;65%&quot;</code></pre>
 <p>Check accuracy by language:</p>
 <pre class="r"><code>lang_avgs &lt;- web %&gt;% group_by(Name, Family) %&gt;% 
   summarize(ACC = mean(ACC)) %&gt;% 
@@ -468,35 +471,36 @@ web_counts &lt;- left_join(web_accs, web_counts)</code></pre>
 # Check:
 
 lang_avgs %&gt;% print(n = Inf)</code></pre>
-<pre><code>## # A tibble: 25 x 3
-## # Groups:   Name [25]
+<pre><code>## # A tibble: 26 x 3
+## # Groups:   Name [26]
 ##    Name       Family   ACC
 ##    &lt;chr&gt;      &lt;chr&gt;  &lt;dbl&gt;
-##  1 English UK IE     0.740
-##  2 Swedish    IE     0.720
-##  3 German     IE     0.720
-##  4 Danish     IE     0.715
+##  1 English    IE     0.741
+##  2 German     IE     0.720
+##  3 Danish     IE     0.715
+##  4 Swedish    IE     0.713
 ##  5 Estonian   other  0.682
-##  6 Korean     other  0.663
-##  7 English US IE     0.661
-##  8 Hungarian  other  0.652
-##  9 Romanian   IE     0.652
-## 10 Russian    IE     0.651
-## 11 French     IE     0.646
-## 12 Greek      IE     0.643
-## 13 Spanish    IE     0.641
-## 14 Polish     IE     0.632
-## 15 Amharic    other  0.629
-## 16 Portuguese IE     0.628
-## 17 Georgian   other  0.626
-## 18 Italian    IE     0.625
-## 19 Japanese   other  0.612
-## 20 Turkish    other  0.584
-## 21 Farsi      IE     0.575
-## 22 Zulu       other  0.553
-## 23 Chinese    other  0.550
-## 24 Albanian   IE     0.537
-## 25 Thai       other  0.521</code></pre>
+##  6 Finnish    other  0.680
+##  7 Korean     other  0.663
+##  8 English US IE     0.661
+##  9 Hungarian  other  0.652
+## 10 Romanian   IE     0.652
+## 11 Russian    IE     0.651
+## 12 French     IE     0.646
+## 13 Greek      IE     0.643
+## 14 Spanish    IE     0.641
+## 15 Polish     IE     0.632
+## 16 Amharic    other  0.629
+## 17 Portuguese IE     0.628
+## 18 Georgian   other  0.626
+## 19 Italian    IE     0.625
+## 20 Japanese   other  0.612
+## 21 Turkish    other  0.584
+## 22 Farsi      IE     0.575
+## 23 Zulu       other  0.553
+## 24 Chinese    other  0.550
+## 25 Albanian   IE     0.537
+## 26 Thai       other  0.521</code></pre>
 <p>Check accuracy by language family:</p>
 <pre class="r"><code>family_avgs &lt;- web %&gt;% group_by(Genus) %&gt;% 
   summarize(ACC = mean(ACC)) %&gt;% 
@@ -508,7 +512,7 @@ family_avgs %&gt;% print(n = Inf)</code></pre>
 <pre><code>## # A tibble: 10 x 2
 ##    Genus          ACC
 ##    &lt;chr&gt;        &lt;dbl&gt;
-##  1 Finno-Ugric  0.669
+##  1 Finno-Ugric  0.671
 ##  2 Korean       0.663
 ##  3 IE           0.660
 ##  4 Afro-Asiatic 0.629
@@ -529,7 +533,7 @@ area_avgs %&gt;% print(n = Inf)</code></pre>
 <pre><code>## # A tibble: 7 x 2
 ##   Autotyp_Area          ACC
 ##   &lt;chr&gt;               &lt;dbl&gt;
-## 1 Inner Asia          0.669
+## 1 Inner Asia          0.671
 ## 2 Europe              0.664
 ## 3 Greater Abyssinia   0.629
 ## 4 N Coast Asia        0.628
@@ -546,38 +550,38 @@ area_avgs %&gt;% print(n = Inf)</code></pre>
 item_avgs %&gt;% print(n = Inf)</code></pre>
 <pre><code>## # A tibble: 30 x 4
 ## # Groups:   Meaning, category [30]
-##    Meaning category subcategory     ACC
-##    &lt;chr&gt;   &lt;chr&gt;    &lt;chr&gt;         &lt;dbl&gt;
-##  1 sleep   action   action        0.986
-##  2 eat     action   action        0.949
-##  3 child   noun     people        0.890
-##  4 tiger   noun     animal        0.867
-##  5 water   noun     inanimate     0.820
-##  6 snake   noun     animal        0.806
-##  7 hunt    action   action        0.789
-##  8 pound   action   action        0.786
-##  9 bad     property adjective     0.772
-## 10 cut     action   action        0.739
-## 11 fire    noun     inanimate     0.727
-## 12 big     property adjective     0.675
-## 13 man     noun     people        0.657
-## 14 small   property adjective     0.642
-## 15 meat    noun     inanimate     0.631
-## 16 good    property adjective     0.629
-## 17 deer    noun     animal        0.592
-## 18 one     property quantifier    0.572
-## 19 fruit   noun     inanimate     0.562
-## 20 rock    noun     inanimate     0.557
-## 21 this    property demonstrative 0.548
-## 22 woman   noun     people        0.547
-## 23 hide    action   action        0.531
-## 24 many    property quantifier    0.530
-## 25 cook    action   action        0.504
-## 26 knife   noun     inanimate     0.454
-## 27 sharp   property adjective     0.446
-## 28 dull    property adjective     0.433
-## 29 gather  action   action        0.379
-## 30 that    property demonstrative 0.346</code></pre>
+##    Meaning category      subcategory     ACC
+##    &lt;chr&gt;   &lt;chr&gt;         &lt;chr&gt;         &lt;dbl&gt;
+##  1 sleep   action        action        0.986
+##  2 eat     action        action        0.951
+##  3 child   noun          people        0.892
+##  4 tiger   noun          animal        0.866
+##  5 water   noun          inanimate     0.821
+##  6 snake   noun          animal        0.809
+##  7 hunt    action        action        0.789
+##  8 pound   action        action        0.782
+##  9 bad     property      adjective     0.772
+## 10 cut     action        action        0.741
+## 11 fire    noun          inanimate     0.728
+## 12 big     property      adjective     0.662
+## 13 man     noun          people        0.659
+## 14 small   property      adjective     0.642
+## 15 good    property      adjective     0.634
+## 16 meat    noun          inanimate     0.630
+## 17 deer    noun          animal        0.592
+## 18 one     property      quantifier    0.574
+## 19 fruit   noun          inanimate     0.564
+## 20 rock    noun          inanimate     0.557
+## 21 this    demonstrative demonstrative 0.548
+## 22 woman   noun          people        0.547
+## 23 many    property      quantifier    0.536
+## 24 hide    action        action        0.535
+## 25 cook    action        action        0.504
+## 26 knife   noun          inanimate     0.456
+## 27 sharp   property      adjective     0.447
+## 28 dull    property      adjective     0.439
+## 29 gather  action        action        0.380
+## 30 that    demonstrative demonstrative 0.345</code></pre>
 <p>Save this for a table that makes Marcus happy:</p>
 <pre class="r"><code>write_csv(mutate(item_avgs, ACC = round(ACC, 2)),
           '../data/by_item_table_web.csv')</code></pre>
@@ -589,28 +593,29 @@ item_avgs %&gt;% print(n = Inf)</code></pre>
 <pre><code>## # A tibble: 11 x 2
 ##    Team    ACC
 ##    &lt;chr&gt; &lt;dbl&gt;
-##  1 MS    0.795
+##  1 MS    0.779
 ##  2 SU    0.739
-##  3 IL    0.679
-##  4 NC    0.658
-##  5 TM    0.631
-##  6 KR    0.630
+##  3 IL    0.681
+##  4 NC    0.659
+##  5 TM    0.632
+##  6 KR    0.631
 ##  7 BW    0.626
-##  8 GB    0.623
-##  9 KD    0.612
-## 10 LJ    0.561
+##  8 GB    0.624
+##  9 KD    0.613
+## 10 LJ    0.567
 ## 11 AB    0.229</code></pre>
 <p>Check accuracy by meaning categories:</p>
 <pre class="r"><code>web %&gt;% group_by(category) %&gt;% 
   summarize(ACC = mean(ACC)) %&gt;% 
   arrange(desc(ACC)) %&gt;% 
   print(n = Inf)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   category   ACC
-##   &lt;chr&gt;    &lt;dbl&gt;
-## 1 action   0.708
-## 2 noun     0.676
-## 3 property 0.556</code></pre>
+<pre><code>## # A tibble: 4 x 2
+##   category        ACC
+##   &lt;chr&gt;         &lt;dbl&gt;
+## 1 action        0.709
+## 2 noun          0.677
+## 3 property      0.585
+## 4 demonstrative 0.447</code></pre>
 <p>Check accuracy by meaning subcategories:</p>
 <pre class="r"><code>web %&gt;% group_by(subcategory) %&gt;% 
   summarize(ACC = mean(ACC)) %&gt;% 
@@ -619,12 +624,12 @@ item_avgs %&gt;% print(n = Inf)</code></pre>
 <pre><code>## # A tibble: 7 x 2
 ##   subcategory     ACC
 ##   &lt;chr&gt;         &lt;dbl&gt;
-## 1 animal        0.755
-## 2 action        0.708
-## 3 people        0.698
-## 4 inanimate     0.625
+## 1 animal        0.756
+## 2 action        0.709
+## 3 people        0.699
+## 4 inanimate     0.626
 ## 5 adjective     0.595
-## 6 quantifier    0.551
+## 6 quantifier    0.555
 ## 7 demonstrative 0.447</code></pre>
 <p>Check cultural similarity:</p>
 <pre class="r"><code>germanics &lt;- c('English UK', 'English US', 'German', 'Swedish', 'Danish')
@@ -640,12 +645,13 @@ web &lt;- mutate(web,
 <p>Check accuracy by this variable:</p>
 <pre class="r"><code>web %&gt;% group_by(CultureSim) %&gt;% 
   summarize(ACC = mean(ACC))</code></pre>
-<pre><code>## # A tibble: 3 x 2
+<pre><code>## # A tibble: 4 x 2
 ##   CultureSim   ACC
 ##   &lt;chr&gt;      &lt;dbl&gt;
-## 1 Germanic   0.712
-## 2 IE         0.632
-## 3 non-IE     0.613</code></pre>
+## 1 English    0.741
+## 2 Germanic   0.703
+## 3 IE         0.632
+## 4 non-IE     0.617</code></pre>
 </div>
 <div id="age-gender" class="section level2">
 <h2>Age / gender:</h2>
@@ -656,8 +662,8 @@ speaker_avgs &lt;- web %&gt;% group_by(ID, Language, Sex, Age) %&gt;%
   summarize(ACC = mean(ACC)) %&gt;% 
   arrange(desc(ACC)) %&gt;% 
   print(n = 10)</code></pre>
-<pre><code>## # A tibble: 825 x 5
-## # Groups:   ID, Language, Sex [825]
+<pre><code>## # A tibble: 843 x 5
+## # Groups:   ID, Language, Sex [843]
 ##    ID         Language Sex     Age   ACC
 ##    &lt;chr&gt;      &lt;chr&gt;    &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;
 ##  1 DE_2003687 DE       F        48 0.888
@@ -670,7 +676,7 @@ speaker_avgs &lt;- web %&gt;% group_by(ID, Language, Sex, Age) %&gt;%
 ##  8 SE_2084957 SE       F        29 0.844
 ##  9 DE_2043986 DE       F        42 0.843
 ## 10 EN_2007249 EN       M        56 0.833
-## # … with 815 more rows</code></pre>
+## # … with 833 more rows</code></pre>
 <pre class="r"><code># Average:
 
 speaker_avgs %&gt;% group_by(Sex) %&gt;% 
@@ -679,8 +685,8 @@ speaker_avgs %&gt;% group_by(Sex) %&gt;%
 ##   Sex     ACC
 ##   &lt;chr&gt; &lt;dbl&gt;
 ## 1 &quot;\\N&quot; 0.661
-## 2 &quot;F&quot;   0.643
-## 3 &quot;M&quot;   0.646</code></pre>
+## 2 &quot;F&quot;   0.644
+## 3 &quot;M&quot;   0.648</code></pre>
 <p>How any speakers above chance?</p>
 <pre class="r"><code>sum(speaker_avgs$ACC &gt; 1/6) / nrow(speaker_avgs)</code></pre>
 <pre><code>## [1] 1</code></pre>
@@ -704,13 +710,13 @@ with(speaker_avgs, cor(Age, ACC, method = 'spearman'))</code></pre>
 ##  4 FR        39.5
 ##  5 TH        38.8
 ##  6 EE        38.2
-##  7 SE        37.3
+##  7 SE        38  
 ##  8 DE        35.5
 ##  9 ES        34.7
 ## 10 CN        33.8
-## 11 EN        32.8
-## 12 RU        32.3
-## 13 RO        31.5
+## 11 RU        32.3
+## 12 RO        31.5
+## 13 FI        31.5
 ## 14 GR        30.6
 ## 15 FA        30.6
 ## 16 IT        30.2
@@ -722,7 +728,7 @@ with(speaker_avgs, cor(Age, ACC, method = 'spearman'))</code></pre>
 ## 22 JP        25.1
 ## 23 AM        24.5
 ## 24 ZU        23.6
-## 25 US        NA</code></pre>
+## 25 EN        NA</code></pre>
 <p>How does accuracy depend on playbacks?</p>
 <pre class="r"><code>web %&gt;% group_by(Rep) %&gt;% 
   summarize(ACC = mean(ACC)) %&gt;% 
@@ -730,24 +736,24 @@ with(speaker_avgs, cor(Age, ACC, method = 'spearman'))</code></pre>
 <pre><code>## # A tibble: 33 x 2
 ##      Rep   ACC
 ##    &lt;dbl&gt; &lt;dbl&gt;
-##  1     1 0.701
-##  2     2 0.585
+##  1     1 0.702
+##  2     2 0.586
 ##  3     3 0.510
-##  4     4 0.503
-##  5     5 0.480
+##  4     4 0.502
+##  5     5 0.481
 ##  6     6 0.435
-##  7     7 0.427
+##  7     7 0.426
 ##  8     8 0.437
-##  9     9 0.433
-## 10    10 0.351
+##  9     9 0.424
+## 10    10 0.345
 ## 11    11 0.412
 ## 12    12 0.261
 ## 13    13 0.333
-## 14    14 0.316
+## 14    14 0.286
 ## 15    15 0.375
 ## 16    16 0.25 
 ## 17    17 0.333
-## 18    18 0.4  
+## 18    18 0.333
 ## 19    19 0    
 ## 20    20 0.25 
 ## 21    21 0.75 
@@ -775,7 +781,7 @@ with(speaker_avgs, cor(Age, ACC, method = 'spearman'))</code></pre>
 
 languages</code></pre>
 <pre><code>##  [1] &quot;AL&quot; &quot;AM&quot; &quot;CN&quot; &quot;DE&quot; &quot;DK&quot; &quot;EE&quot; &quot;IT&quot; &quot;PL&quot; &quot;EN&quot; &quot;ES&quot; &quot;PT&quot; &quot;SE&quot; &quot;ZU&quot; &quot;TH&quot;
-## [15] &quot;FA&quot; &quot;FR&quot; &quot;GE&quot; &quot;GR&quot; &quot;HU&quot; &quot;JP&quot; &quot;KR&quot; &quot;RO&quot; &quot;RU&quot; &quot;TR&quot; &quot;US&quot;</code></pre>
+## [15] &quot;FA&quot; &quot;FI&quot; &quot;FR&quot; &quot;GE&quot; &quot;GR&quot; &quot;HU&quot; &quot;JP&quot; &quot;KR&quot; &quot;RO&quot; &quot;RU&quot; &quot;TR&quot;</code></pre>
 <p>Put this into a tibble:</p>
 <pre class="r"><code>meanings_per_language &lt;- tibble(Language = languages)
 meanings_per_language$N_over_chance &lt;- NA
@@ -825,16 +831,16 @@ meanings_per_language</code></pre>
 ## 13 ZU                  30
 ## 14 TH                  29
 ## 15 FA                  29
-## 16 FR                  30
-## 17 GE                  29
-## 18 GR                  30
-## 19 HU                  30
-## 20 JP                  30
-## 21 KR                  30
-## 22 RO                  30
-## 23 RU                  30
-## 24 TR                  30
-## 25 US                  30</code></pre>
+## 16 FI                  29
+## 17 FR                  30
+## 18 GE                  29
+## 19 GR                  30
+## 20 HU                  30
+## 21 JP                  30
+## 22 KR                  30
+## 23 RO                  30
+## 24 RU                  30
+## 25 TR                  30</code></pre>
 <p>The easiest thing is to compute how many had N meanings correct:</p>
 <pre class="r"><code>meanings_per_language %&gt;% count(N_over_chance) %&gt;% 
   mutate(proportion = n / nrow(meanings_per_language))</code></pre>
@@ -842,8 +848,8 @@ meanings_per_language</code></pre>
 ##   N_over_chance     n proportion
 ##           &lt;int&gt; &lt;int&gt;      &lt;dbl&gt;
 ## 1            28     1       0.04
-## 2            29     4       0.16
-## 3            30    20       0.8</code></pre>
+## 2            29     5       0.2 
+## 3            30    19       0.76</code></pre>
 <p>72% of all languages had all meanings over chance. All languages had at least 28 meanings over chance!</p>
 </div>
 <div id="check-influence-of-l2" class="section level2">
@@ -857,12 +863,12 @@ L2_counts &lt;- table(apply(L2_counts, MARGIN = 1,
 <pre class="r"><code>L2_counts</code></pre>
 <pre><code>## 
 ##     English L1     english L2          no L2 non-English L2 
-##             76            636             91             22</code></pre>
+##             76            654             91             22</code></pre>
 <p>Proportions:</p>
 <pre class="r"><code>round(L2_counts / sum(L2_counts), 2)</code></pre>
 <pre><code>## 
 ##     English L1     english L2          no L2 non-English L2 
-##           0.09           0.77           0.11           0.03</code></pre>
+##           0.09           0.78           0.11           0.03</code></pre>
 <p>Check accuracy by the four different categories:</p>
 <pre class="r"><code>web %&gt;% group_by(L2_simplified) %&gt;% 
   summarize(ACC = mean(ACC)) %&gt;% 
@@ -883,100 +889,100 @@ EN_tab &lt;- table(EN$Meaning, EN$Choice)
 EN_tab</code></pre>
 <pre><code>##         
 ##          bad big child clapping cook cut deer dull eat fire fruit gather
-##   bad     83   0     0        0    0   0    1    0   0    0     0      0
-##   big     21 113     1        0    0   0    2    1   1    0     0      1
-##   child    0   0   124        0    0   0    0    1   0    0     0      0
-##   cook     0   1     0        1   83   1    2    2   7    3     4      0
-##   cut      1   0     2        0    0 101    2    0   0    2     0      0
-##   deer     4   1     2        0    2   0   89    4   0    0     0      2
-##   dull     3   1     1        0    1   0    3   96   2    0     0      1
-##   eat      0   0     0        0    0   0    0    0 127    0     0      1
-##   fire     0   1     0        0    6   1    1    1   0  105     0      1
-##   fruit    1   0     1        0    6   2    1    0  14    0    87      0
-##   gather   3   0     9        1    1   0    4    5   0    1     3     60
-##   good     0   3     2        1    1   0    2    2   0    2     0      1
-##   hide     5   1     1        0    1   4    1    0   1    3     0      0
-##   hunt     1   1     0        0    0   1    0    0   0    0     0      0
-##   knife    0   1     0        0    0  14    1    0   0    4     0      3
-##   man      6   9     0        0    1   3    1    0   0    1     0      1
-##   many     1   0     2        1    1   3    2    1   0    1     0      5
-##   meat     0   0     0        0    1   0    0    0  15    0     5      2
-##   one      2   0     0        1    0   4    0    1   2    0     1      1
-##   pound    0   2     1        0    0   2    0    2   0    0     0      0
-##   rock     0   1     1        2    0   5    2    6   0    0     0      1
-##   sharp    1   1     2        0    3   8    3    0   1    5     0      0
-##   sleep    0   0     0        0    0   0    0    0   0    0     0      0
-##   small    1   0     3        0    1   0    1    1   1    0     0      1
-##   snake    0   1     0        0    5   0    0    0   0    2     0      0
-##   that     4  11     1        1    0   3    2   10   1    0     1      1
-##   this     1   0     6        0    0   0    2    5   0    0     0      4
-##   tiger    1   1     0        0    0   1    0    2   0    0     0      0
-##   water    0   0     0        0    1   0    1    2   2    0     0      1
-##   woman    1   1     5        0    0   0    1    4   0    1     0      1
+##   bad    153   1     0        0    0   0    2    4   0    0     0      0
+##   big     49 188     2        0    0   0    3    3   1    3     1      5
+##   child    2   0   234        0    0   0    1    1   0    0     0      0
+##   cook     2   2     1        1  145   3    3    2  15    6     8      2
+##   cut      6   0     2        3    2 174    4    1   1    3     0      2
+##   deer    15   6     5        0    4   5  139    5   2    1     0      3
+##   dull     9   2     1        0    2   0    6  183   3    0     0      3
+##   eat      0   0     0        0    0   0    0    0 238    0     2      2
+##   fire     1   3     1        0    9   2    1    2   0  200     0      1
+##   fruit    1   2     1        0   16   3    1    0  39    0   142      1
+##   gather   9   0    12        1    6   1    5   11   1    2     5    117
+##   good     1   5     6        1    4   0    3    3   1    2     1      3
+##   hide    20   4     3        0    2   7    2    0   1    3     1      1
+##   hunt     8   1     2        0    1   1    2    0   0    2     0      0
+##   knife    2   1     0        1    2  30    3    3   0    4     1      5
+##   man     11  13     0        0    1   3    1    4   2    1     1      3
+##   many     1   3     4        1    2   4    5    5   0    1     0     10
+##   meat     0   2     0        0    1   0    0    0  31    1     7      3
+##   one      5   1     2        4    1  11    1    6   3    1     1      4
+##   pound    0   7     1        1    0   4    2    4   1    0     0      0
+##   rock     2   1     2        2    0   7    2   15   1    0     0      2
+##   sharp    4   1    10        0    4  15    4    2   2   13     0      1
+##   sleep    0   0     1        0    0   0    0    3   0    1     0      0
+##   small    3   0     8        0    2   1    6    2   5    0     0      1
+##   snake    2   1     0        0   12   0    0    2   0    6     0      0
+##   that    16  13     1        1    1   4    3   20   9    0     4      1
+##   this     8   2    13        0    0   0    4   17   0    0     0      5
+##   tiger    4   2     0        0    0   1    1    3   0    0     0      0
+##   water    0   0     0        2    1   0    1    2   3    0     0      2
+##   woman    4   3    11        0    0   0    3    4   0    1     1      3
 ##         
 ##          good hide hunt knife man many meat one pound rock sharp sleep
-##   bad       0    0    0     0   1    1    0   0     0    0     0     1
-##   big       6    0    1     0   6    7    2   1     0    0     0     1
-##   child     0    1    0     0   0    0    0   0     0    0     0     0
-##   cook      0    1    1     2   1    0    0   1     0    0     1     3
-##   cut       0    1    1     4   1    0    1   0     0    0     3     3
-##   deer      1    2    2     1   4    2    0   1     0    1     2     0
-##   dull      1    1    0     0   1    2    0   1     0    0     0     1
-##   eat       0    0    0     0   0    0    1   0     0    0     0     0
-##   fire      0    1    1     1   0    0    0   0     0    0     1     3
-##   fruit     2    0    3     1   1    0    5   0     0    0     1     1
-##   gather    2    3    1     0   3    6    0   0     2    0     1     4
-##   good    100    0    0     0   0    1    0   1     0    0     1     0
-##   hide      1   84    0     1   0    2    0   0     0    0     9     2
-##   hunt      0    1  114     0   2    0    0   0     3    3     1     0
-##   knife     0    6    2    81   0    0    0   0     3    1    11     0
-##   man       1    1    1     0  85    3    2   2     1    1     0     1
-##   many      0    1    1     0   0   91    0   0     7    2     2     0
-##   meat      2    0    2     0   2    0   94   0     0    0     0     2
-##   one       2    2    1     1   0    0    0  78     1    4     4     0
-##   pound     1    0    1     0   0    1    0   1   107    7     0     0
-##   rock      2    0    0     0   2    0    1   9     7   75     1     1
-##   sharp     0    7    1     3   0    1    0   3     0    2    69     3
-##   sleep     0    0    0     0   0    0    0   0     0    0     0   129
-##   small     1    3    1     2   0    0    0   4     0    0     2     0
-##   snake     0    0    1     1   0    1    1   0     0    1     1     1
-##   that      6    1    0     0   2    5    3   4     0    0     1     1
-##   this     10    0    0     0   0    0    0   6     0    0     0     0
-##   tiger     0    0    0     0   2    0    1   0     0    0     2     2
-##   water     1    0    3     0   0    1    0   1     1    0     0     1
-##   woman     2    3    0     0   0    0    1   0     1    0     4     3
+##   bad       0    0    0     0   2    1    0   0     0    0     0     1
+##   big      13    0    4     0  10    9    4   3     0    4     0     1
+##   child     0    1    0     0   0    0    0   0     0    0     1     0
+##   cook      6    2    2     5   1    0    4   1     0    0     1     7
+##   cut       0    3    3     7   2    2    2   0     2    1     7     6
+##   deer      5    4    4     3   5    5    2   1     4    2     3     1
+##   dull      4    1    1     0   5    4    1   1     0    0     1     2
+##   eat       1    0    0     0   0    0    1   0     1    0     0     0
+##   fire      1    1    2     1   0    0    0   0     0    0     3     4
+##   fruit     7    1    3     2   4    0   10   0     0    0     3     2
+##   gather    3    3    4     0   7   12    0   0     2    1     1     9
+##   good    178    0    0     0   4    1    0   1     0    0     1     2
+##   hide      1  147    1     5   0    2    1   0     0    0    12     7
+##   hunt      0    3  199     0   4    0    0   0     7    6     1     1
+##   knife     0   10    6   143   0    0    0   0     5    4    18     1
+##   man       3    1    2     0 170    6    3   4     3    1     1     1
+##   many      1    2    1     0   0  171    0   0    11    2     3     0
+##   meat      8    0    4     0   3    0  178   0     0    0     0     3
+##   one       3    2    1     3   0    0    0 141     3    5     9     0
+##   pound     1    0    3     1   2    1    0   3   199    9     0     0
+##   rock      3    0    1     0   2    0    1  22    14  135     3     2
+##   sharp     2   10    4     6   1    2    0   6     1    5   116     7
+##   sleep     0    0    0     0   0    0    0   0     0    0     0   241
+##   small     3    5    1     3   1    0    0   9     0    0     3     0
+##   snake     0    1    1     2   0    1    3   0     0    2     3     1
+##   that     14    3    2     0  11    8    5   7     0    1     2     5
+##   this     13    0    0     0   3    1    1   7     0    1     0     2
+##   tiger     0    1    0     0   4    1    1   0     0    0     3     6
+##   water     1    1    3     0   0    3    0   1     3    0     0     3
+##   woman     8    5    1     0   1    1    1   0     1    0     8     6
 ##         
 ##          small snake that this tiger water woman
-##   bad        0     0    0    0     0     0     0
-##   big        0     1    2    1     0     1     2
-##   child      2     0    0    0     0     1     0
-##   cook       1     8    0    0     0     6     0
-##   cut        1     1    0    1     2     1     1
-##   deer       2     0    0    0     2     2     3
-##   dull       2     0    4    4     2     0     2
-##   eat        0     0    0    0     0     0     0
-##   fire       0     2    0    0     0     4     0
-##   fruit      0     0    0    0     2     1     0
-##   gather     5     0    0    6     0     7     2
-##   good       1     0    1    1     0     0     9
-##   hide       0     2    2    0     3     4     2
-##   hunt       0     0    1    0     0     1     0
-##   knife      0     0    1    0     0     1     0
-##   man        0     1    5    0     2     1     0
-##   many       3     1    0    0     0     3     1
-##   meat       0     0    0    0     4     0     0
-##   one        7     0    7    7     0     3     0
-##   pound      0     0    0    4     0     0     0
-##   rock       0     0    3    3     0     7     0
-##   sharp      3     3    1    4     0     4     1
+##   bad        0     1    0    0     0     0     0
+##   big        1     2    2    4     5     2     8
+##   child      3     0    1    0     1     1     0
+##   cook       1    14    0    0     0    12     0
+##   cut        2     2    0    1     5     2     1
+##   deer       4     0    4    3     2     6     3
+##   dull       2     0    4    5     2     0     4
+##   eat        0     0    0    0     0     1     0
+##   fire       0     4    0    0     3     7     0
+##   fruit      0     0    0    0     3     3     2
+##   gather     8     0    0   10     0    10     6
+##   good       1     0    3    2     0     2    21
+##   hide       2     6    2    0     4     5     7
+##   hunt       0     0    1    2     4     1     0
+##   knife      1     0    1    1     0     3     1
+##   man        0     1    7    0     2     1     0
+##   many       6     1    1    1     0     5     5
+##   meat       0     0    0    0     5     0     0
+##   one       12     0    8   12     0     6     1
+##   pound      1     0    1    4     0     0     1
+##   rock       6     0    7    6     0    10     0
+##   sharp      4     5    3    8     1     6     3
 ##   sleep      0     0    0    0     0     0     0
-##   small     95     0    4    6     0     1     1
-##   snake      0   113    0    0     0     1     0
-##   that       0     0   62    2     1     1     5
-##   this       3     0    6   85     0     1     0
-##   tiger      0     0    0    0   117     0     0
-##   water      2     0    1    0     1   110     0
-##   woman      1     0    1    4     1     2    92</code></pre>
+##   small    167     1    8    8     0     4     5
+##   snake      0   207    0    0     0     2     0
+##   that       1     2   98    2     1     1    10
+##   this       8     0    9  149     0     1     2
+##   tiger      0     0    0    0   219     0     0
+##   water      2     0    1    0     1   216     0
+##   woman      2     1    2    4     1     2   172</code></pre>
 <p>Looks good. We want to do this for all of the six languages an then correlate these tables with the same tables from the other languages.</p>
 <p>We can re-use the “languages” vector from above for this.</p>
 <p>Create an empty 6 * 6 matrix (filled with NAs) to be filled with all the languages:</p>
@@ -991,7 +997,7 @@ colnames(M) &lt;- languages
 # Check:
 
 M</code></pre>
-<pre><code>##    AL AM CN DE DK EE IT PL EN ES PT SE ZU TH FA FR GE GR HU JP KR RO RU TR
+<pre><code>##    AL AM CN DE DK EE IT PL EN ES PT SE ZU TH FA FI FR GE GR HU JP KR RO RU
 ## AL NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## AM NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## CN NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
@@ -1007,6 +1013,7 @@ M</code></pre>
 ## ZU NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## TH NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## FA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+## FI NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## FR NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## GE NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## GR NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
@@ -1016,8 +1023,7 @@ M</code></pre>
 ## RO NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## RU NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
 ## TR NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
-## US NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
-##    US
+##    TR
 ## AL NA
 ## AM NA
 ## CN NA
@@ -1033,6 +1039,7 @@ M</code></pre>
 ## ZU NA
 ## TH NA
 ## FA NA
+## FI NA
 ## FR NA
 ## GE NA
 ## GR NA
@@ -1041,8 +1048,7 @@ M</code></pre>
 ## KR NA
 ## RO NA
 ## RU NA
-## TR NA
-## US NA</code></pre>
+## TR NA</code></pre>
 <p>Create two copies of this matrix, one for the correlation coefficients, another one for the p-values:</p>
 <pre class="r"><code>r_vals &lt;- M
 p_vals &lt;- M</code></pre>
@@ -1106,66 +1112,66 @@ web2 &lt;- mutate(web2,
 
 round(r_vals, 2)</code></pre>
 <pre><code>##      AL   AM   CN   DE   DK   EE   IT   PL   EN   ES   PT   SE   ZU   TH
-## AL   NA 0.30 0.29 0.37 0.29 0.35 0.42 0.37 0.36 0.36 0.37 0.33 0.36 0.32
-## AM 0.30   NA 0.51 0.58 0.57 0.53 0.55 0.46 0.46 0.44 0.58 0.46 0.43 0.35
-## CN 0.29 0.51   NA 0.68 0.52 0.59 0.57 0.53 0.52 0.47 0.63 0.57 0.52 0.42
-## DE 0.37 0.58 0.68   NA 0.72 0.76 0.70 0.70 0.69 0.61 0.76 0.68 0.66 0.48
-## DK 0.29 0.57 0.52 0.72   NA 0.66 0.65 0.58 0.58 0.60 0.71 0.62 0.60 0.48
-## EE 0.35 0.53 0.59 0.76 0.66   NA 0.63 0.67 0.63 0.60 0.69 0.65 0.61 0.48
-## IT 0.42 0.55 0.57 0.70 0.65 0.63   NA 0.70 0.75 0.75 0.75 0.65 0.66 0.44
-## PL 0.37 0.46 0.53 0.70 0.58 0.67 0.70   NA 0.70 0.66 0.65 0.60 0.59 0.40
-## EN 0.36 0.46 0.52 0.69 0.58 0.63 0.75 0.70   NA 0.69 0.73 0.69 0.59 0.44
-## ES 0.36 0.44 0.47 0.61 0.60 0.60 0.75 0.66 0.69   NA 0.70 0.67 0.59 0.40
-## PT 0.37 0.58 0.63 0.76 0.71 0.69 0.75 0.65 0.73 0.70   NA 0.69 0.66 0.52
-## SE 0.33 0.46 0.57 0.68 0.62 0.65 0.65 0.60 0.69 0.67 0.69   NA 0.58 0.43
-## ZU 0.36 0.43 0.52 0.66 0.60 0.61 0.66 0.59 0.59 0.59 0.66 0.58   NA 0.50
-## TH 0.32 0.35 0.42 0.48 0.48 0.48 0.44 0.40 0.44 0.40 0.52 0.43 0.50   NA
-## FA 0.34 0.44 0.48 0.55 0.48 0.50 0.62 0.58 0.63 0.57 0.59 0.53 0.53 0.40
-## FR 0.34 0.56 0.64 0.75 0.68 0.74 0.72 0.59 0.61 0.61 0.76 0.62 0.60 0.49
-## GE 0.25 0.37 0.40 0.44 0.45 0.48 0.43 0.42 0.40 0.45 0.49 0.46 0.44 0.37
-## GR 0.42 0.45 0.53 0.58 0.50 0.55 0.74 0.66 0.75 0.72 0.67 0.67 0.55 0.32
-## HU 0.38 0.56 0.60 0.73 0.71 0.68 0.70 0.63 0.63 0.62 0.72 0.63 0.62 0.44
+## AL   NA 0.30 0.29 0.37 0.29 0.35 0.42 0.37 0.40 0.36 0.37 0.33 0.36 0.32
+## AM 0.30   NA 0.51 0.58 0.57 0.53 0.55 0.46 0.51 0.44 0.58 0.47 0.43 0.35
+## CN 0.29 0.51   NA 0.68 0.52 0.59 0.57 0.53 0.56 0.47 0.63 0.56 0.52 0.42
+## DE 0.37 0.58 0.68   NA 0.72 0.76 0.70 0.70 0.72 0.61 0.76 0.67 0.66 0.48
+## DK 0.29 0.57 0.52 0.72   NA 0.66 0.65 0.58 0.60 0.60 0.71 0.60 0.60 0.48
+## EE 0.35 0.53 0.59 0.76 0.66   NA 0.63 0.67 0.66 0.60 0.69 0.63 0.61 0.48
+## IT 0.42 0.55 0.57 0.70 0.65 0.63   NA 0.70 0.78 0.75 0.75 0.66 0.66 0.44
+## PL 0.37 0.46 0.53 0.70 0.58 0.67 0.70   NA 0.74 0.66 0.65 0.60 0.59 0.40
+## EN 0.40 0.51 0.56 0.72 0.60 0.66 0.78 0.74   NA 0.71 0.78 0.71 0.65 0.49
+## ES 0.36 0.44 0.47 0.61 0.60 0.60 0.75 0.66 0.71   NA 0.70 0.68 0.59 0.40
+## PT 0.37 0.58 0.63 0.76 0.71 0.69 0.75 0.65 0.78 0.70   NA 0.70 0.66 0.52
+## SE 0.33 0.47 0.56 0.67 0.60 0.63 0.66 0.60 0.71 0.68 0.70   NA 0.57 0.44
+## ZU 0.36 0.43 0.52 0.66 0.60 0.61 0.66 0.59 0.65 0.59 0.66 0.57   NA 0.50
+## TH 0.32 0.35 0.42 0.48 0.48 0.48 0.44 0.40 0.49 0.40 0.52 0.44 0.50   NA
+## FA 0.34 0.44 0.48 0.55 0.48 0.50 0.62 0.58 0.67 0.57 0.59 0.54 0.53 0.40
+## FI 0.27 0.45 0.52 0.68 0.59 0.66 0.57 0.51 0.62 0.51 0.66 0.61 0.54 0.46
+## FR 0.34 0.56 0.64 0.75 0.68 0.74 0.72 0.59 0.66 0.61 0.76 0.61 0.60 0.49
+## GE 0.25 0.37 0.40 0.44 0.45 0.48 0.43 0.42 0.43 0.45 0.49 0.43 0.44 0.37
+## GR 0.42 0.45 0.53 0.58 0.50 0.55 0.74 0.66 0.77 0.72 0.67 0.68 0.55 0.32
+## HU 0.38 0.56 0.60 0.73 0.71 0.68 0.70 0.63 0.66 0.62 0.72 0.61 0.62 0.44
 ## JP 0.32 0.59 0.60 0.68 0.59 0.67 0.61 0.61 0.63 0.59 0.68 0.58 0.56 0.47
-## KR 0.32 0.56 0.58 0.64 0.57 0.53 0.58 0.49 0.58 0.53 0.65 0.53 0.58 0.44
-## RO 0.28 0.44 0.55 0.61 0.51 0.59 0.51 0.53 0.54 0.56 0.59 0.48 0.50 0.33
-## RU 0.34 0.48 0.48 0.67 0.54 0.59 0.59 0.65 0.63 0.52 0.59 0.50 0.51 0.41
-## TR 0.30 0.55 0.57 0.69 0.65 0.69 0.63 0.60 0.53 0.56 0.68 0.55 0.58 0.51
-## US 0.38 0.49 0.53 0.66 0.55 0.60 0.71 0.68 0.76 0.65 0.72 0.64 0.62 0.47
-##      FA   FR   GE   GR   HU   JP   KR   RO   RU   TR   US
-## AL 0.34 0.34 0.25 0.42 0.38 0.32 0.32 0.28 0.34 0.30 0.38
-## AM 0.44 0.56 0.37 0.45 0.56 0.59 0.56 0.44 0.48 0.55 0.49
-## CN 0.48 0.64 0.40 0.53 0.60 0.60 0.58 0.55 0.48 0.57 0.53
-## DE 0.55 0.75 0.44 0.58 0.73 0.68 0.64 0.61 0.67 0.69 0.66
-## DK 0.48 0.68 0.45 0.50 0.71 0.59 0.57 0.51 0.54 0.65 0.55
-## EE 0.50 0.74 0.48 0.55 0.68 0.67 0.53 0.59 0.59 0.69 0.60
-## IT 0.62 0.72 0.43 0.74 0.70 0.61 0.58 0.51 0.59 0.63 0.71
-## PL 0.58 0.59 0.42 0.66 0.63 0.61 0.49 0.53 0.65 0.60 0.68
-## EN 0.63 0.61 0.40 0.75 0.63 0.63 0.58 0.54 0.63 0.53 0.76
-## ES 0.57 0.61 0.45 0.72 0.62 0.59 0.53 0.56 0.52 0.56 0.65
-## PT 0.59 0.76 0.49 0.67 0.72 0.68 0.65 0.59 0.59 0.68 0.72
-## SE 0.53 0.62 0.46 0.67 0.63 0.58 0.53 0.48 0.50 0.55 0.64
-## ZU 0.53 0.60 0.44 0.55 0.62 0.56 0.58 0.50 0.51 0.58 0.62
-## TH 0.40 0.49 0.37 0.32 0.44 0.47 0.44 0.33 0.41 0.51 0.47
-## FA   NA 0.55 0.34 0.64 0.55 0.56 0.50 0.45 0.49 0.50 0.63
-## FR 0.55   NA 0.48 0.57 0.70 0.65 0.57 0.58 0.55 0.67 0.62
-## GE 0.34 0.48   NA 0.43 0.52 0.51 0.45 0.45 0.40 0.46 0.41
-## GR 0.64 0.57 0.43   NA 0.55 0.59 0.52 0.52 0.54 0.53 0.70
-## HU 0.55 0.70 0.52 0.55   NA 0.65 0.60 0.58 0.58 0.63 0.61
-## JP 0.56 0.65 0.51 0.59 0.65   NA 0.62 0.59 0.62 0.64 0.57
-## KR 0.50 0.57 0.45 0.52 0.60 0.62   NA 0.57 0.46 0.52 0.56
-## RO 0.45 0.58 0.45 0.52 0.58 0.59 0.57   NA 0.50 0.54 0.52
-## RU 0.49 0.55 0.40 0.54 0.58 0.62 0.46 0.50   NA 0.50 0.57
-## TR 0.50 0.67 0.46 0.53 0.63 0.64 0.52 0.54 0.50   NA 0.57
-## US 0.63 0.62 0.41 0.70 0.61 0.57 0.56 0.52 0.57 0.57   NA</code></pre>
+## KR 0.32 0.56 0.58 0.64 0.57 0.53 0.58 0.49 0.60 0.53 0.65 0.53 0.58 0.44
+## RO 0.28 0.44 0.55 0.61 0.51 0.59 0.51 0.53 0.56 0.56 0.59 0.48 0.50 0.33
+## RU 0.35 0.41 0.45 0.59 0.50 0.51 0.63 0.66 0.70 0.56 0.60 0.51 0.48 0.35
+## TR 0.30 0.55 0.57 0.69 0.65 0.69 0.63 0.60 0.59 0.56 0.68 0.55 0.58 0.51
+##      FA   FI   FR   GE   GR   HU   JP   KR   RO   RU   TR
+## AL 0.34 0.27 0.34 0.25 0.42 0.38 0.32 0.32 0.28 0.35 0.30
+## AM 0.44 0.45 0.56 0.37 0.45 0.56 0.59 0.56 0.44 0.41 0.55
+## CN 0.48 0.52 0.64 0.40 0.53 0.60 0.60 0.58 0.55 0.45 0.57
+## DE 0.55 0.68 0.75 0.44 0.58 0.73 0.68 0.64 0.61 0.59 0.69
+## DK 0.48 0.59 0.68 0.45 0.50 0.71 0.59 0.57 0.51 0.50 0.65
+## EE 0.50 0.66 0.74 0.48 0.55 0.68 0.67 0.53 0.59 0.51 0.69
+## IT 0.62 0.57 0.72 0.43 0.74 0.70 0.61 0.58 0.51 0.63 0.63
+## PL 0.58 0.51 0.59 0.42 0.66 0.63 0.61 0.49 0.53 0.66 0.60
+## EN 0.67 0.62 0.66 0.43 0.77 0.66 0.63 0.60 0.56 0.70 0.59
+## ES 0.57 0.51 0.61 0.45 0.72 0.62 0.59 0.53 0.56 0.56 0.56
+## PT 0.59 0.66 0.76 0.49 0.67 0.72 0.68 0.65 0.59 0.60 0.68
+## SE 0.54 0.61 0.61 0.43 0.68 0.61 0.58 0.53 0.48 0.51 0.55
+## ZU 0.53 0.54 0.60 0.44 0.55 0.62 0.56 0.58 0.50 0.48 0.58
+## TH 0.40 0.46 0.49 0.37 0.32 0.44 0.47 0.44 0.33 0.35 0.51
+## FA   NA 0.47 0.55 0.34 0.64 0.55 0.56 0.50 0.45 0.49 0.50
+## FI 0.47   NA 0.63 0.41 0.49 0.59 0.53 0.53 0.52 0.46 0.54
+## FR 0.55 0.63   NA 0.48 0.57 0.70 0.65 0.57 0.58 0.49 0.67
+## GE 0.34 0.41 0.48   NA 0.43 0.52 0.51 0.45 0.45 0.40 0.46
+## GR 0.64 0.49 0.57 0.43   NA 0.55 0.59 0.52 0.52 0.63 0.53
+## HU 0.55 0.59 0.70 0.52 0.55   NA 0.65 0.60 0.58 0.51 0.63
+## JP 0.56 0.53 0.65 0.51 0.59 0.65   NA 0.62 0.59 0.57 0.64
+## KR 0.50 0.53 0.57 0.45 0.52 0.60 0.62   NA 0.57 0.43 0.52
+## RO 0.45 0.52 0.58 0.45 0.52 0.58 0.59 0.57   NA 0.44 0.54
+## RU 0.49 0.46 0.49 0.40 0.63 0.51 0.57 0.43 0.44   NA 0.46
+## TR 0.50 0.54 0.67 0.46 0.53 0.63 0.64 0.52 0.54 0.46   NA</code></pre>
 <p>What’s the minimum and maximum correlation value?</p>
 <pre class="r"><code>range(r_vals, na.rm = TRUE)</code></pre>
-<pre><code>## [1] 0.2529738 0.7620143</code></pre>
+<pre><code>## [1] 0.2529738 0.7777961</code></pre>
 <p>Which are those?</p>
 <pre class="r"><code>row.names(r_vals)[r_vals %in% range(r_vals, na.rm = TRUE)]</code></pre>
 <pre><code>## [1] &quot;GE&quot; NA   NA   NA</code></pre>
 <p>What’s the mean correlation?</p>
 <pre class="r"><code>mean(r_vals, na.rm = TRUE)</code></pre>
-<pre><code>## [1] 0.5544581</code></pre>
+<pre><code>## [1] 0.5504909</code></pre>
 <p>What are the p-values?:</p>
 <pre class="r"><code>p_vals</code></pre>
 <pre><code>##       AL    AM    CN    DE    DK    EE    IT    PL    EN    ES    PT    SE
@@ -1184,6 +1190,7 @@ round(r_vals, 2)</code></pre>
 ## ZU 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## TH 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## FA 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
+## FI 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## FR 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## GE 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## GR 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
@@ -1193,8 +1200,7 @@ round(r_vals, 2)</code></pre>
 ## RO 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## RU 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## TR 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
-## US 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
-##       ZU    TH    FA    FR    GE    GR    HU    JP    KR    RO    RU    TR
+##       ZU    TH    FA    FI    FR    GE    GR    HU    JP    KR    RO    RU
 ## AL 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## AM 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## CN 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
@@ -1210,17 +1216,17 @@ round(r_vals, 2)</code></pre>
 ## ZU    NA 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## TH 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
 ## FA 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
-## FR 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
-## GE 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001 0.001
-## GR 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001
-## HU 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001
-## JP 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001
-## KR 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001
-## RO 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001
-## RU 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001
-## TR 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA
-## US 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
-##       US
+## FI 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
+## FR 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001 0.001
+## GE 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001 0.001
+## GR 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001 0.001
+## HU 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001 0.001
+## JP 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001 0.001
+## KR 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001 0.001
+## RO 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA 0.001
+## RU 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001    NA
+## TR 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001
+##       TR
 ## AL 0.001
 ## AM 0.001
 ## CN 0.001
@@ -1236,6 +1242,7 @@ round(r_vals, 2)</code></pre>
 ## ZU 0.001
 ## TH 0.001
 ## FA 0.001
+## FI 0.001
 ## FR 0.001
 ## GE 0.001
 ## GR 0.001
@@ -1244,22 +1251,12 @@ round(r_vals, 2)</code></pre>
 ## KR 0.001
 ## RO 0.001
 ## RU 0.001
-## TR 0.001
-## US    NA</code></pre>
+## TR    NA</code></pre>
 <p>For how many comparisons would we have to correct?</p>
 <pre class="r"><code>length(languages) * (length(languages) - 1) / 2</code></pre>
 <pre><code>## [1] 300</code></pre>
-<p>300 comparisons! That’s a bit ridiculous:</p>
-<pre class="r"><code># Vector of adjusted p-values from upper triangle of the matrix:
-
-adjusted_p &lt;- p.adjust(p_vals[upper.tri(p_vals)], method = 'bonferroni', n = 300)
-
-# How many significant?
-
-sum(adjusted_p &lt; 0.05)</code></pre>
-<pre><code>## [1] 0</code></pre>
-<p>None after correction.</p>
-<p>The better approach would be to calculate how many we expect to be significant based on chance alone for an alpha level of 0.05.</p>
+<p>300 comparisons!</p>
+<p>Calculate how many we expect to be significant based on chance alone for an alpha level of 0.05.</p>
 <pre class="r"><code>300 * 0.05</code></pre>
 <pre><code>## [1] 15</code></pre>
 <p>Only 15. And how many are significant? (before correction)</p>

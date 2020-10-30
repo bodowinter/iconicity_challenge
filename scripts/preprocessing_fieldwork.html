@@ -578,7 +578,9 @@ field[field$Choice == 'woman,,', ]$Choice &lt;- 'woman'</code></pre>
 <div id="add-language-names" class="section level2">
 <h2>Add language names:</h2>
 <p>Add language name information to the data frame:</p>
-<pre class="r"><code>field$Name &lt;- 'English'
+<pre class="r"><code>field$Name &lt;- NA
+field[field$Language == 'BE', ]$Name &lt;- 'English (UK)'
+field[field$Language == 'US', ]$Name &lt;- 'English (US)'
 field[field$Language == 'DE', ]$Name &lt;- 'German'
 field[field$Language == 'SR', ]$Name &lt;- 'Portuguese'
 field[field$Language == 'VA', ]$Name &lt;- 'Daakie'
@@ -597,7 +599,8 @@ field[field$Language == 'BE', ]$Name2 &lt;- 'British English'</code></pre>
 <pre class="r"><code>field &lt;- left_join(field, sem, by = c('Meaning' = 'meaning'))</code></pre>
 <p>Create an “Animacy” variable from the “subcategory” column (this lumps “People” and “Animals” together):</p>
 <pre class="r"><code>field &lt;- mutate(field,
-                Animacy = ifelse(subcategory == 'inanimate', 'inanimate', 'animate'))</code></pre>
+                Animacy = ifelse(subcategory == 'inanimate',
+                                 'inanimate', 'animate'))</code></pre>
 </div>
 <div id="save-output" class="section level2">
 <h2>Save output:</h2>
