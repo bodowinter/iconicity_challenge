@@ -189,7 +189,6 @@ kartvelian <- main_samples$`r_Genus[Kartvelian,Intercept]`
 sino_tibetan <- main_samples$`r_Genus[Sino-Tibetan,Intercept]`
 tai_kadai <- main_samples$`r_Genus[Tai-Kadai,Intercept]`
 turkic <- main_samples$`r_Genus[Turkic,Intercept]`
-afro_asiatic <- main_samples$`r_Genus[Afro-Asiatic,Intercept]`
 japanese <- main_samples$`r_Genus[Japanese,Intercept]`
 ```
 
@@ -203,7 +202,6 @@ Add the language family estimates and the intercepts to the respective languages
 
 ```{r}
 lang_samples$`r_Language[AL,Intercept]` <- lang_samples$`r_Language[AL,Intercept]` + IE + int
-lang_samples$`r_Language[AM,Intercept]` <- lang_samples$`r_Language[AM,Intercept]` + afro_asiatic + int # need to fix
 lang_samples$`r_Language[CN,Intercept]` <- lang_samples$`r_Language[CN,Intercept]` + sino_tibetan + int
 lang_samples$`r_Language[DE,Intercept]` <- lang_samples$`r_Language[DE,Intercept]` + IE + int
 lang_samples$`r_Language[DK,Intercept]` <- lang_samples$`r_Language[DK,Intercept]` + IE + int
